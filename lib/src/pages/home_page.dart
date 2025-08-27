@@ -1,4 +1,3 @@
-// lib/pages/home_page.dart
 import 'package:erp/src/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import '../widgets/custom_card.dart';
@@ -20,7 +19,6 @@ class _HomePageState extends State<HomePage> {
     const _HomeGrid(),
     const HistoryPage(),
     const SettingsPage(),
-    const ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -32,7 +30,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Row(
           children: [
@@ -41,21 +38,24 @@ class _HomePageState extends State<HomePage> {
               height: 28,
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               "ERP MUJ",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 20,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
         ),
       ),
-
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -116,40 +116,48 @@ class _HomeGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🔹 Header: foto profil + welcome
+        // Header dengan GestureDetector untuk ke ProfilePage
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                radius: 28,
-                backgroundImage: AssetImage("assets/images/logo.png"), // default foto profil
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Welcome, User!",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            },
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundImage: AssetImage("assets/images/logo.png"),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome!",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                  Text(
-                    "ERP MUJ",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
+                    Text(
+                      "User",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
-                  ),
-                ],
-              )
-            ],
+                  ],
+                )
+              ],
+            ),
           ),
         ),
 
-        // 🔹 Grid aplikasi
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(16),

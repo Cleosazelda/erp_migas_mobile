@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // tambahkan di pubspec.yaml
+import 'package:image_picker/image_picker.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -10,11 +10,11 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  File? _imageFile; // tempat nyimpen foto yang dipilih
+  File? _imageFile;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery); // bisa ganti ke camera
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
@@ -50,10 +50,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     right: 0,
                     child: InkWell(
                       onTap: _pickImage,
-                      child: const CircleAvatar(
+                      child: CircleAvatar(
                         radius: 18,
-                        backgroundColor: Colors.blue,
-                        child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                        backgroundColor: Colors.green,
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                       ),
                     ),
                   )
@@ -62,29 +62,62 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 16),
 
-            const Text(
+            Text(
               "User",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
-            const Text(
+            Text(
               "user@email.com",
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
             ),
             const SizedBox(height: 20),
 
             // Info tambahan
             Card(
               child: ListTile(
-                leading: const Icon(Icons.badge),
-                title: const Text("Jabatan"),
-                subtitle: const Text("Staff IT"),
+                leading: Icon(
+                  Icons.badge,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                title: Text(
+                  "Jabatan",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  "Staff IT",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
               ),
             ),
             Card(
               child: ListTile(
-                leading: const Icon(Icons.business),
-                title: const Text("Divisi"),
-                subtitle: const Text("Teknologi Informasi"),
+                leading: Icon(
+                  Icons.business,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                title: Text(
+                  "Divisi",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  "Teknologi Informasi",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
               ),
             ),
           ],

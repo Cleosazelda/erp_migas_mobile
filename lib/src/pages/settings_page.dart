@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../erp.dart'; // biar bisa akses themeNotifier
+import '../erp.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
 
@@ -16,49 +16,91 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    // sync awal sama ValueNotifier
     isDark = themeNotifier.value == ThemeMode.dark;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-        centerTitle: true,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          SwitchListTile(
-            title: const Text("Dark Mode"),
-            value: isDark,
-            onChanged: (val) {
-              setState(() => isDark = val);
-              themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
-            },
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Settings",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              ListTile(
+                leading: Icon(
+                  isDark ? Icons.dark_mode : Icons.wb_sunny,
+                  color: isDark ? Colors.blueGrey : Colors.yellow[700],
+                ),
+                title: Text(
+                  isDark ? "Light Mode" : "Dark Mode",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                trailing: Switch(
+                  value: isDark,
+                  activeColor: Colors.green,
+                  onChanged: (val) {
+                    setState(() {
+                      isDark = val;
+                      themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+                    });
+                  },
+                ),
+              ),
+
+              ListTile(
+                leading: Icon(
+                  Icons.person,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                title: Text(
+                  "Profile",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfilePage()),
+                  );
+                },
+              ),
+
+              ListTile(
+                leading: Icon(
+                  Icons.logout,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                title: Text(
+                  "Logout",
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text("Profile"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfilePage()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text("Logout"),
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

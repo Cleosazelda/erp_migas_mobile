@@ -7,7 +7,6 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -18,7 +17,6 @@ class LoginPage extends StatelessWidget {
         child: Center(
           child: SingleChildScrollView(
             child: Card(
-              color: Colors.white,
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -38,22 +36,29 @@ class LoginPage extends StatelessWidget {
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text(
                               "Login Aplikasi ERP",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
                               "PT Migas Utama Jabar (Perseroda)",
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              ),
                             ),
                           ],
                         ),
                         const Spacer(),
-                        const Icon(Icons.info_outline),
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -70,7 +75,6 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-
                     TextField(
                       obscureText: true,
                       decoration: InputDecoration(
@@ -84,20 +88,18 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () {
-                          // TODO: handle login action
-                          // setelah login berhasil → pindah ke HomePage
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(builder: (context) => const HomePage()),
@@ -106,9 +108,8 @@ class LoginPage extends StatelessWidget {
                         child: const Text(
                           "Login",
                           style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
