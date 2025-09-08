@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
+import 'admin/admin_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -17,6 +19,7 @@ class LoginPage extends StatelessWidget {
         child: Center(
           child: SingleChildScrollView(
             child: Card(
+              color: isDark ? Colors.black : Colors.white,
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -84,6 +87,7 @@ class LoginPage extends StatelessWidget {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
+
                       ),
                     ),
                     const SizedBox(height: 20),

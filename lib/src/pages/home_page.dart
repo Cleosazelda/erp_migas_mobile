@@ -1,9 +1,10 @@
-import 'package:erp/src/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import '../widgets/custom_card.dart';
 import 'detail_page.dart';
-import 'history_page.dart';
+import 'profile_page.dart';
 import 'settings_page.dart';
+import 'history_page.dart';
+import '../erp.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,59 +16,129 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
-    const _HomeGrid(),
-    const HistoryPage(),
-    const SettingsPage(),
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
+  Widget _getCurrentPage() {
+    switch (_selectedIndex) {
+      case 0:
+        return const _HomeGrid();
+      case 1:
+        return const HistoryPage();
+      case 2:
+        return const SettingsPage();
+      default:
+        return const _HomeGrid();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
+      body: Container(
+        decoration: _selectedIndex == 0
+            ? const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/bg_home.png"),
+            fit: BoxFit.cover,
+          ),
+        )
+            : null,
+        child: Column(
           children: [
-            Image.asset(
-              "assets/images/logo.png",
-              height: 28,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              "ERP MUJ",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Theme.of(context).colorScheme.onSurface,
+            if (_selectedIndex == 0)
+              SafeArea(
+                bottom: false,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  child: const SizedBox(height: 20),
+                ),
+              ),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                        child: _getCurrentPage(),
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          border: Border(
+                            top: BorderSide(
+                              color: theme.dividerColor,
+                              width: 0.2,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildNavItem(0, Icons.home, "Home"),
+                            _buildNavItem(1, Icons.history, "History"),
+                            _buildNavItem(2, Icons.settings, "Settings"),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Home",
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _selectedIndex == index;
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: () => _onItemTapped(index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.disabledColor,
+            size: 24,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: "History",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Settings",
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.disabledColor,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
         ],
       ),
@@ -75,11 +146,14 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+//  HOME GRID
 class _HomeGrid extends StatelessWidget {
   const _HomeGrid();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final apps = [
       {
         "title": "DigiAM",
@@ -113,84 +187,90 @@ class _HomeGrid extends StatelessWidget {
       },
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header dengan GestureDetector untuk ke ProfilePage
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfilePage()),
-              );
-            },
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundImage: AssetImage("assets/images/logo.png"),
+                //ava
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+
+                  ),
+                  child: CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors.grey.withOpacity(0.6),
+                    backgroundImage: AssetImage("assets/images/logo.png"),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Welcome!",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ERP MUJ",
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    Text(
-                      "User",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      Text(
+                        "Welcome User!",
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.hintColor,
+                        ),
                       ),
-                    ),
-                  ],
-                )
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1,
-            ),
-            itemCount: apps.length,
-            itemBuilder: (context, index) {
-              final app = apps[index];
-              return CustomCard(
-                title: app["title"]!,
-                subtitle: app["subtitle"]!,
-                image: app["image"]!,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DetailPage(
-                        title: app["title"]!,
-                        subtitle: app["subtitle"]!,
-                        image: app["image"]!,
+          const SizedBox(height: 20),
+          Expanded(
+            child: GridView.builder(
+              padding: EdgeInsets.zero,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: apps.length,
+              itemBuilder: (context, index) {
+                final app = apps[index];
+                return CustomCard(
+                  title: app["title"]!,
+                  subtitle: app["subtitle"]!,
+                  image: app["image"]!,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DetailPage(
+                          title: app["title"]!,
+                          subtitle: app["subtitle"]!,
+                          image: app["image"]!,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              );
-            },
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
