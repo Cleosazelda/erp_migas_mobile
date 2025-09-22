@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../services/api_service.dart';
+import '../login_page.dart';
 
 // CustomCard Widget
 class CustomCard extends StatelessWidget {
@@ -64,19 +66,16 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage>
     with SingleTickerProviderStateMixin {
-  // Dummy data user
-  List<Map<String, dynamic>> users = [
-    {"nama": "Andi", "email": "andi@muj.co.id", "divisi": "Finance", "jabatan": "Staff"},
-    {"nama": "Budi", "email": "budi@muj.co.id", "divisi": "IT", "jabatan": "Manager"},
-    {"nama": "Citra", "email": "citra@muj.co.id", "divisi": "HR", "jabatan": "Staff"},
-    {"nama": "Dewi", "email": "dewi@muj.co.id", "divisi": "Operasional", "jabatan": "Staff"},
-    {"nama": "Eka", "email": "eka@muj.co.id", "divisi": "Finance", "jabatan": "Staff"},
-  ];
+  // Data dari API
+  List<Map<String, dynamic>> users = [];
+  List<String> divisiList = [];
+  Map<String, dynamic> dashboardStats = {};
 
-  List<String> divisiList = ["Finance", "IT", "HR", "Operasional"];
+  bool isLoading = true;
 
   final TextEditingController namaController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
   final TextEditingController jabatanController = TextEditingController();
   final TextEditingController divisiController = TextEditingController();
   String? selectedDivisi;
@@ -93,39 +92,188 @@ class _AdminPageState extends State<AdminPage>
         currentTabIndex = _tabController.index;
       });
     });
+    _loadData();
   }
 
-  void addUser() {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    namaController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    jabatanController.dispose();
+    divisiController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() => isLoading = true);
+
+      final results = await Future.wait([
+        ApiService.getUsers(),
+        ApiService.getDivisions(),
+        ApiService.getDashboardStats(),
+      ]);
+
+      setState(() {
+        users = results[0] as List<Map<String, dynamic>>;
+        divisiList = results[1] as List<String>;
+        dashboardStats = results[2] as Map<String, dynamic>;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      _showError("Gagal memuat data: $e");
+    }
+  }
+
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Logout'),
+          content: const Text('Apakah Anda yakin ingin keluar?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      try {
+        await ApiService.logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          _showError("Gagal logout: $e");
+        }
+      }
+    }
+  }
+
+  Future<void> addUser() async {
     if (namaController.text.isEmpty ||
         emailController.text.isEmpty ||
+        passwordController.text.isEmpty ||
         selectedDivisi == null ||
-        jabatanController.text.isEmpty) return;
+        jabatanController.text.isEmpty) {
+      _showError("Semua field harus diisi");
+      return;
+    }
 
-    setState(() {
-      users.add({
-        "nama": namaController.text,
-        "email": emailController.text,
-        "divisi": selectedDivisi!,
-        "jabatan": jabatanController.text,
-      });
-    });
+    try {
+      final response = await ApiService.addUser(
+        nama: namaController.text,
+        email: emailController.text,
+        password: passwordController.text,
+        jabatan: jabatanController.text,
+        divisi: selectedDivisi!,
+      );
 
-    namaController.clear();
-    emailController.clear();
-    jabatanController.clear();
-    selectedDivisi = null;
-    Navigator.pop(context);
+      if (response['status'] == 'success') {
+        _showSuccess("User berhasil ditambahkan");
+        _clearUserForm();
+        Navigator.pop(context);
+        _loadData(); // Reload data
+      } else {
+        _showError(response['message'] ?? "Gagal menambah user");
+      }
+    } catch (e) {
+      _showError("Error: $e");
+    }
   }
 
-  void addDivisi() {
-    if (divisiController.text.isEmpty) return;
+  Future<void> addDivisi() async {
+    if (divisiController.text.isEmpty) {
+      _showError("Nama divisi harus diisi");
+      return;
+    }
 
-    setState(() {
-      divisiList.add(divisiController.text);
-    });
+    try {
+      final response = await ApiService.addDivision(divisiController.text);
 
-    divisiController.clear();
-    Navigator.pop(context);
+      if (response['status'] == 'success') {
+        _showSuccess("Divisi berhasil ditambahkan");
+        divisiController.clear();
+        Navigator.pop(context);
+        _loadData(); // Reload data
+      } else {
+        _showError(response['message'] ?? "Gagal menambah divisi");
+      }
+    } catch (e) {
+      _showError("Error: $e");
+    }
+  }
+
+  Future<void> deleteUser(int userId, String nama) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Hapus'),
+        content: Text('Apakah Anda yakin ingin menghapus user "$nama"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true) {
+      try {
+        final response = await ApiService.deleteUser(userId);
+        if (response['status'] == 'success') {
+          _showSuccess("User berhasil dihapus");
+          _loadData();
+        } else {
+          _showError(response['message'] ?? "Gagal menghapus user");
+        }
+      } catch (e) {
+        _showError("Error: $e");
+      }
+    }
+  }
+
+  void _clearUserForm() {
+    namaController.clear();
+    emailController.clear();
+    passwordController.clear();
+    jabatanController.clear();
+    selectedDivisi = null;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
   }
 
   void showAddDialog() {
@@ -141,10 +289,19 @@ class _AdminPageState extends State<AdminPage>
                   controller: namaController,
                   decoration: const InputDecoration(labelText: "Nama"),
                 ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: emailController,
                   decoration: const InputDecoration(labelText: "Email"),
+                  keyboardType: TextInputType.emailAddress,
                 ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: passwordController,
+                  decoration: const InputDecoration(labelText: "Password"),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedDivisi,
                   hint: const Text("Pilih Divisi"),
@@ -157,6 +314,7 @@ class _AdminPageState extends State<AdminPage>
                       .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                       .toList(),
                 ),
+                const SizedBox(height: 8),
                 TextField(
                   controller: jabatanController,
                   decoration: const InputDecoration(labelText: "Jabatan"),
@@ -165,11 +323,17 @@ class _AdminPageState extends State<AdminPage>
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+            TextButton(
+              onPressed: () {
+                _clearUserForm();
+                Navigator.pop(context);
+              },
+              child: const Text("Batal"),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
               onPressed: addUser,
-              child: const Text("Simpan"),
+              child: const Text("Simpan", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -184,11 +348,17 @@ class _AdminPageState extends State<AdminPage>
             decoration: const InputDecoration(labelText: "Nama Divisi"),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+            TextButton(
+              onPressed: () {
+                divisiController.clear();
+                Navigator.pop(context);
+              },
+              child: const Text("Batal"),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               onPressed: addDivisi,
-              child: const Text("Simpan"),
+              child: const Text("Simpan", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -198,8 +368,14 @@ class _AdminPageState extends State<AdminPage>
 
   @override
   Widget build(BuildContext context) {
-    int totalUser = users.length;
-    int totalDivisi = divisiList.length;
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    int totalUser = dashboardStats['totalUsers'] ?? users.length;
+    int totalDivisi = dashboardStats['totalDivisions'] ?? divisiList.length;
 
     Map<String, int> divisiCount = {};
     for (var d in divisiList) {
@@ -214,6 +390,16 @@ class _AdminPageState extends State<AdminPage>
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 1,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -289,7 +475,9 @@ class _AdminPageState extends State<AdminPage>
                           controller: _tabController,
                           children: [
                             // Tab Pengguna
-                            ListView.builder(
+                            users.isEmpty
+                                ? const Center(child: Text("Tidak ada data user"))
+                                : ListView.builder(
                               itemCount: users.length,
                               itemBuilder: (_, index) {
                                 final user = users[index];
@@ -305,18 +493,35 @@ class _AdminPageState extends State<AdminPage>
                                       child: const Icon(Icons.person,
                                           color: Colors.blueAccent),
                                     ),
-                                    title: Text(user["nama"]),
-                                    subtitle:
-                                    Text("${user["jabatan"]} - ${user["divisi"]}"),
-                                    trailing:
-                                    const Icon(Icons.arrow_forward_ios, size: 16),
+                                    title: Text(user["nama"] ?? "Unknown"),
+                                    subtitle: Text(
+                                        "${user["jabatan"] ?? "-"} - ${user["divisi"] ?? "-"}"),
+                                    trailing: PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        if (value == 'delete') {
+                                          deleteUser(
+                                            user['id'] ?? 0,
+                                            user['nama'] ?? 'Unknown',
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Text('Hapus'),
+                                        ),
+                                      ],
+                                      icon: const Icon(Icons.more_vert),
+                                    ),
                                   ),
                                 );
                               },
                             ),
 
                             // Tab Divisi
-                            ListView(
+                            divisiList.isEmpty
+                                ? const Center(child: Text("Tidak ada data divisi"))
+                                : ListView(
                               children: divisiCount.entries.map((e) {
                                 return Card(
                                   color: Colors.grey[50],
@@ -325,7 +530,14 @@ class _AdminPageState extends State<AdminPage>
                                       borderRadius: BorderRadius.circular(12)),
                                   child: ListTile(
                                     title: Text(e.key),
-                                    trailing: Text(e.value.toString()),
+                                    subtitle: Text("${e.value} karyawan"),
+                                    trailing: Text(
+                                      e.value.toString(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                   ),
                                 );
                               }).toList(),

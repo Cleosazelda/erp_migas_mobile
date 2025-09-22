@@ -1,9 +1,61 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'admin/admin_page.dart';
+import '../../services/api_service.dart';
 
-class LoginPage extends StatelessWidget {
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool isLoading = false;
+
+  Future<void> _login() async {
+    setState(() => isLoading = true);
+
+    try {
+      final response = await ApiService.login(
+        emailController.text,
+        passwordController.text,
+      );
+
+      if (response["status"] == "success") {
+        final role = response["user"]["role"];
+        final nama = response["user"]["nama"];
+
+        if (role == "admin") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminPage()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage(nama: nama),
+            ),
+          );
+        }
+      } else {
+        _showError(response["message"] ?? "Login gagal");
+      }
+    } catch (e) {
+      _showError("Error: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +82,10 @@ class LoginPage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Header
                     Row(
                       children: [
-                        Image.asset(
-                          "assets/images/logo.png",
-                          height: 40,
-                        ),
+                        Image.asset("assets/images/logo.png", height: 40),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,19 +108,17 @@ class LoginPage extends StatelessWidget {
                           ],
                         ),
                         const Spacer(),
-                        Icon(
-                          Icons.info_outline,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        ),
+                        Icon(Icons.info_outline,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       ],
                     ),
                     const SizedBox(height: 20),
 
+                    // Email
                     TextField(
+                      controller: emailController,
                       decoration: InputDecoration(
                         labelText: "Email",
-                        hintText: "Enter your email",
-                        helperText: "Please enter your registered email",
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -78,20 +126,20 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
+                    // Password
                     TextField(
+                      controller: passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: "Password",
-                        hintText: "Enter your password",
-                        helperText: "Must be at least 8 characters",
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-
                       ),
                     ),
                     const SizedBox(height: 20),
 
+                    // Tombol Login
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -103,18 +151,12 @@ class LoginPage extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HomePage()),
-                          );
-                        },
-                        child: const Text(
+                        onPressed: isLoading ? null : _login,
+                        child: isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
                           "Login",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

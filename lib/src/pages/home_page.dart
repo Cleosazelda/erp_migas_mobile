@@ -5,9 +5,12 @@ import 'profile_page.dart';
 import 'settings_page.dart';
 import 'history_page.dart';
 import '../erp.dart';
+import 'DigiAm/home_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String nama;
+  const HomePage({super.key, required this.nama});
+
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -25,13 +28,13 @@ class _HomePageState extends State<HomePage> {
   Widget _getCurrentPage() {
     switch (_selectedIndex) {
       case 0:
-        return const _HomeGrid();
+        return _HomeGrid(nama: widget.nama);
       case 1:
         return const HistoryPage();
       case 2:
         return const SettingsPage();
       default:
-        return const _HomeGrid();
+        return _HomeGrid(nama: widget.nama);
     }
   }
 
@@ -148,7 +151,8 @@ class _HomePageState extends State<HomePage> {
 
 //  HOME GRID
 class _HomeGrid extends StatelessWidget {
-  const _HomeGrid();
+  final String nama;
+  const _HomeGrid({required this.nama});
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +229,7 @@ class _HomeGrid extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        "Welcome User!",
+                        "Welcome $nama!",
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.hintColor,
                         ),
@@ -254,17 +258,29 @@ class _HomeGrid extends StatelessWidget {
                   subtitle: app["subtitle"]!,
                   image: app["image"]!,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DetailPage(
-                          title: app["title"]!,
-                          subtitle: app["subtitle"]!,
-                          image: app["image"]!,
+                    if (app["title"] == "DigiAM") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DigiAmHomePage(),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetailPage(
+                            title: app["title"]!,
+                            subtitle: app["subtitle"]!,
+                            image: app["image"]!,
+                          ),
+                        ),
+                      );
+                    }
                   },
+
+
+
                 );
               },
             ),
