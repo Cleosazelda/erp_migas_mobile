@@ -4,13 +4,12 @@ import 'detail_page.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
 import 'history_page.dart';
-import '../erp.dart';
 import 'DigiAm/home_page.dart';
 
 class HomePage extends StatefulWidget {
-  final String nama;
-  const HomePage({super.key, required this.nama});
-
+  final String firstName;
+  final String lastName;
+  const HomePage({super.key, required this.firstName, required this.lastName});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -19,270 +18,137 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      _HomeGrid(firstName: widget.firstName, lastName: widget.lastName),
+      const HistoryPage(),
+      const SettingsPage(),
+    ];
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
-  Widget _getCurrentPage() {
-    switch (_selectedIndex) {
-      case 0:
-        return _HomeGrid(nama: widget.nama);
-      case 1:
-        return const HistoryPage();
-      case 2:
-        return const SettingsPage();
-      default:
-        return _HomeGrid(nama: widget.nama);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      body: Container(
-        decoration: _selectedIndex == 0
-            ? const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/bg_home.png"),
-            fit: BoxFit.cover,
-          ),
-        )
-            : null,
-        child: Column(
-          children: [
-            if (_selectedIndex == 0)
-              SafeArea(
-                bottom: false,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  child: const SizedBox(height: 20),
-                ),
-              ),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          topRight: Radius.circular(30),
-                        ),
-                        child: _getCurrentPage(),
-                      ),
-                    ),
-                    SafeArea(
-                      top: false,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          border: Border(
-                            top: BorderSide(
-                              color: theme.dividerColor,
-                              width: 0.2,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildNavItem(0, Icons.home, "Home"),
-                            _buildNavItem(1, Icons.history, "History"),
-                            _buildNavItem(2, Icons.settings, "Settings"),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
       ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _selectedIndex == index;
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.disabledColor,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.disabledColor,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.green,
+        onTap: _onItemTapped,
       ),
     );
   }
 }
 
-//  HOME GRID
 class _HomeGrid extends StatelessWidget {
-  final String nama;
-  const _HomeGrid({required this.nama});
+  final String firstName;
+  final String lastName;
+  const _HomeGrid({required this.firstName, required this.lastName});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final apps = [
-      {
-        "title": "DigiAM",
-        "subtitle": "Aplikasi Manajemen Aset",
-        "image": "assets/images/digiam.png"
-      },
-      {
-        "title": "Bisnis AP",
-        "subtitle": "Monitoring Bisnis AP",
-        "image": "assets/images/bisnis_ap.png"
-      },
-      {
-        "title": "PBJ",
-        "subtitle": "Pengelolaan PBJ",
-        "image": "assets/images/pbj.png"
-      },
-      {
-        "title": "Disposisi",
-        "subtitle": "Aplikasi Disposisi",
-        "image": "assets/images/disposisi.png"
-      },
-      {
-        "title": "Talenta",
-        "subtitle": "Aplikasi HR",
-        "image": "assets/images/talenta.png"
-      },
-      {
-        "title": "Mansis",
-        "subtitle": "Manajemen Sistem",
-        "image": "assets/images/mansis.png"
-      },
+      {"title": "DigiAM", "subtitle": "Aplikasi Manajemen Aset", "image": "assets/images/digiam.png"},
+      {"title": "Bisnis AP", "subtitle": "Monitoring Bisnis AP", "image": "assets/images/bisnis_ap.png"},
+      {"title": "PBJ", "subtitle": "Pengelolaan PBJ", "image": "assets/images/pbj.png"},
+      {"title": "Disposisi", "subtitle": "Aplikasi Disposisi", "image": "assets/images/disposisi.png"},
+      {"title": "Talenta", "subtitle": "Aplikasi HR", "image": "assets/images/talenta.png"},
+      {"title": "Mansis", "subtitle": "Manajemen Sistem", "image": "assets/images/mansis.png"},
     ];
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 20),
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(image: AssetImage("assets/images/bg_home.png"), fit: BoxFit.cover),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                //ava
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-
-                  ),
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.grey.withOpacity(0.6),
-                    backgroundImage: AssetImage("assets/images/logo.png"),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "ERP MUJ",
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        "Welcome $nama!",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.hintColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SafeArea(bottom: false, child: SizedBox(height: 36)),
           Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.zero,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1.0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
               ),
-              itemCount: apps.length,
-              itemBuilder: (context, index) {
-                final app = apps[index];
-                return CustomCard(
-                  title: app["title"]!,
-                  subtitle: app["subtitle"]!,
-                  image: app["image"]!,
-                  onTap: () {
-                    if (app["title"] == "DigiAM") {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DigiAmHomePage(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+                          child: const CircleAvatar(radius: 25, backgroundColor: Colors.grey, backgroundImage: AssetImage("assets/images/logo.png")),
                         ),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DetailPage(
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("ERP MUJ", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                              Text("Welcome $firstName $lastName!", style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: EdgeInsets.zero,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 1.0,
+                        ),
+                        itemCount: apps.length,
+                        itemBuilder: (context, index) {
+                          final app = apps[index];
+                          return CustomCard(
                             title: app["title"]!,
                             subtitle: app["subtitle"]!,
                             image: app["image"]!,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-
-
-
-                );
-              },
+                            onTap: () {
+                              if (app["title"] == "DigiAM") {
+                                // --- PERBAIKAN DI SINI ---
+                                // Kirim nama depan dan belakang ke DigiAmHomePage
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => DigiAmHomePage(
+                                      firstName: firstName,
+                                      lastName: lastName,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => DetailPage(
+                                  title: app["title"]!, subtitle: app["subtitle"]!, image: app["image"]!,
+                                )));
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

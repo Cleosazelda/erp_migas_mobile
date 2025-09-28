@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import 'admin/admin_page.dart';
+// import 'admin/admin_page.dart'; // Halaman admin dinonaktifkan sementara
 import '../../services/api_service.dart';
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +16,11 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
 
   Future<void> _login() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      _showError("Email dan password tidak boleh kosong.");
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
@@ -25,35 +29,37 @@ class _LoginPageState extends State<LoginPage> {
         passwordController.text,
       );
 
-      if (response["status"] == "success") {
-        final role = response["user"]["role"];
-        final nama = response["user"]["nama"];
+      if (!mounted) return;
 
-        if (role == "admin") {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const AdminPage()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage(nama: nama),
-            ),
-          );
-        }
+      if (response["status"] == "success" && response["user"] != null) {
+        final firstName = response["user"]["first_name"] ?? "User";
+        final lastName = response["user"]["last_name"] ?? "";
+
+        // UPDATE: Hapus logika pengecekan role admin.
+        // Semua pengguna akan diarahkan ke HomePage.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(firstName: firstName, lastName: lastName),
+          ),
+        );
       } else {
-        _showError(response["message"] ?? "Login gagal");
+        _showError(response["message"] ?? "Login gagal. Periksa kembali kredensial Anda.");
       }
     } catch (e) {
-      _showError("Error: $e");
+      if (mounted) {
+        _showError(e.toString().replaceFirst("Exception: ", ""));
+      }
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -71,93 +77,62 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Card(
-              color: isDark ? Colors.black : Colors.white,
+              color: isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.95),
               elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               margin: const EdgeInsets.all(24),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header
                     Row(
                       children: [
                         Image.asset("assets/images/logo.png", height: 40),
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Login Aplikasi ERP",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            Text(
-                              "PT Migas Utama Jabar (Perseroda)",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                          ],
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Login Aplikasi ERP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text("PT Migas Utama Jabar (Perseroda)", style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
                         ),
-                        const Spacer(),
-                        Icon(Icons.info_outline,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       ],
                     ),
-                    const SizedBox(height: 20),
-
-                    // Email
+                    const SizedBox(height: 24),
                     TextField(
                       controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         labelText: "Email",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Password
                     TextField(
                       controller: passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: "Password",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Tombol Login
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: isLoading ? null : _login,
                         child: isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                          "Login",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                            : const Text("Login", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

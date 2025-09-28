@@ -16,7 +16,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
   bool isEditing = false;
 
-  final TextEditingController namaController = TextEditingController();
+  // UPDATE: Pisahkan controller untuk first name dan last name
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController jabatanController = TextEditingController();
   final TextEditingController divisiController = TextEditingController();
@@ -29,7 +31,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    namaController.dispose();
+    firstNameController.dispose();
+    lastNameController.dispose();
     emailController.dispose();
     jabatanController.dispose();
     divisiController.dispose();
@@ -38,255 +41,157 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     try {
+      if (!mounted) return;
       setState(() => isLoading = true);
       final profile = await ApiService.getProfile();
 
-      setState(() {
-        userProfile = profile['user'];
-        namaController.text = userProfile!['nama'] ?? '';
-        emailController.text = userProfile!['email'] ?? '';
-        jabatanController.text = userProfile!['jabatan'] ?? '';
-        divisiController.text = userProfile!['divisi'] ?? '';
-        isLoading = false;
-      });
+      if (mounted && profile['status'] == 'success') {
+        setState(() {
+          userProfile = profile['user'];
+          firstNameController.text = userProfile!['first_name'] ?? '';
+          lastNameController.text = userProfile!['last_name'] ?? '';
+          emailController.text = userProfile!['email'] ?? '';
+
+          jabatanController.text = userProfile!['jabatan'] ?? 'Data tidak tersedia';
+          divisiController.text = userProfile!['divisi'] ?? 'Data tidak tersedia';
+        });
+      } else {
+        _showError("Gagal memuat profil: ${profile['message']}");
+      }
     } catch (e) {
-      setState(() => isLoading = false);
       _showError("Gagal memuat profil: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> _updateProfile() async {
     try {
       setState(() => isLoading = true);
-
       final response = await ApiService.updateProfile(
-        nama: namaController.text,
+        firstName: firstNameController.text,
+        lastName: lastNameController.text,
         email: emailController.text,
-        jabatan: jabatanController.text,
-        divisi: divisiController.text,
       );
 
-      if (response['status'] == 'success') {
-        setState(() {
-          userProfile = response['user'];
-          isEditing = false;
-          isLoading = false;
-        });
-        _showSuccess("Profil berhasil diperbarui");
-      } else {
-        setState(() => isLoading = false);
-        _showError(response['message'] ?? "Gagal memperbarui profil");
+      if (mounted) {
+        if (response['success'] == true) {
+          await _loadProfile();
+          setState(() => isEditing = false);
+          _showSuccess("Profil berhasil diperbarui");
+        } else {
+          _showError(response['message'] ?? "Gagal memperbarui profil");
+        }
       }
     } catch (e) {
-      setState(() => isLoading = false);
       _showError("Error: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
-    }
+    if (pickedFile != null) setState(() => _imageFile = File(pickedFile.path));
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccess(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text("Profile"),
-          centerTitle: true,
-          backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-          foregroundColor: isDark ? Colors.white : Colors.black,
-          elevation: 0,
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (userProfile == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text("Profile"),
-          centerTitle: true,
-          backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-          foregroundColor: isDark ? Colors.white : Colors.black,
-          elevation: 0,
-        ),
-        body: const Center(child: Text("Gagal memuat profil")),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
         centerTitle: true,
-        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : Colors.black,
-        ),
         actions: [
-          if (!isEditing)
+          if (!isEditing && userProfile != null)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => setState(() => isEditing = true),
             ),
         ],
       ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SingleChildScrollView(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : userProfile == null
+          ? const Center(child: Text("Gagal memuat profil."))
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Foto profil
-            Center(
-              child: Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                    ),
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey.withOpacity(0.6),
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!)
-                          : const AssetImage("assets/images/logo.png")
-                      as ImageProvider,
-                    ),
-                  ),
-                  if (isEditing)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: InkWell(
-                        onTap: _pickImage,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+            // Widget foto profil
+            Center(child: Stack(children: [
+              CircleAvatar(
+                radius: 50,
+                backgroundImage: _imageFile != null ? FileImage(_imageFile!) : const AssetImage("assets/images/logo.png") as ImageProvider,
               ),
-            ),
+              if (isEditing) Positioned(bottom: 0, right: 0, child: InkWell(
+                onTap: _pickImage,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.grey, shape: BoxShape.circle, border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2)),
+                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                ),
+              )),
+            ])),
             const SizedBox(height: 20),
-
-            // Nama dan Email
             if (!isEditing) ...[
               Text(
-                userProfile!['nama'] ?? 'User',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                "${firstNameController.text} ${lastNameController.text}",
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
-              Text(
-                userProfile!['email'] ?? 'user@email.com',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                ),
-              ),
+              Text(emailController.text, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
               const SizedBox(height: 30),
-
-              // Info cards (read-only)
-              _buildInfoCard(
-                context,
-                icon: Icons.badge,
-                title: "Jabatan",
-                subtitle: userProfile!['jabatan'] ?? '-',
-              ),
+              _buildInfoCard(context, icon: Icons.badge, title: "Jabatan", subtitle: jabatanController.text),
               const SizedBox(height: 12),
-              _buildInfoCard(
-                context,
-                icon: Icons.business,
-                title: "Divisi",
-                subtitle: userProfile!['divisi'] ?? '-',
-              ),
+              _buildInfoCard(context, icon: Icons.business, title: "Divisi", subtitle: divisiController.text),
             ] else ...[
-              // Form edit
               const SizedBox(height: 20),
-              _buildEditField("Nama", namaController),
+              _buildEditField("Nama Depan", firstNameController),
+              const SizedBox(height: 16),
+              _buildEditField("Nama Belakang", lastNameController),
               const SizedBox(height: 16),
               _buildEditField("Email", emailController),
               const SizedBox(height: 16),
-              _buildEditField("Jabatan", jabatanController),
+              _buildEditField("Jabatan", jabatanController, isEnabled: false),
               const SizedBox(height: 16),
-              _buildEditField("Divisi", divisiController),
+              _buildEditField("Divisi", divisiController, isEnabled: false),
               const SizedBox(height: 30),
-
-              // Tombol save/cancel
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() => isEditing = false);
-                        // Reset form
-                        namaController.text = userProfile!['nama'] ?? '';
-                        emailController.text = userProfile!['email'] ?? '';
-                        jabatanController.text = userProfile!['jabatan'] ?? '';
-                        divisiController.text = userProfile!['divisi'] ?? '';
-                      },
-                      child: const Text("Batal"),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _updateProfile,
-                      child: const Text("Simpan"),
-                    ),
-                  ),
-                ],
-              ),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () {
+                    setState(() => isEditing = false);
+                    _loadProfile();
+                  },
+                  child: const Text("Batal"),
+                )),
+                const SizedBox(width: 16),
+                Expanded(child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                  onPressed: _updateProfile,
+                  child: const Text("Simpan"),
+                )),
+              ]),
             ],
           ],
         ),
@@ -294,90 +199,44 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildEditField(String label, TextEditingController controller) {
+  Widget _buildEditField(String label, TextEditingController controller, {bool isEnabled = true}) {
     return TextField(
       controller: controller,
+      enabled: isEnabled,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.green),
-        ),
+        filled: !isEnabled,
+        fillColor: Colors.grey[200],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
-  Widget _buildInfoCard(
-      BuildContext context, {
-        required IconData icon,
-        required String title,
-        required String subtitle,
-      }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildInfoCard(BuildContext context, {required IconData icon, required String title, required String subtitle}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: isDark
-            ? Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        )
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.green,
-              size: 24,
-            ),
+            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: Colors.green, size: 24),
           ),
           const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            ],
+          )),
         ],
       ),
     );
