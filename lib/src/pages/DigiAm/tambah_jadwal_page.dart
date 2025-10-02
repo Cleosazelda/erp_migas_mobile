@@ -4,11 +4,7 @@ import '../../../services/jadwal_api_service.dart';
 
 class TambahJadwalPage extends StatefulWidget {
   final String namaPengguna;
-
-  const TambahJadwalPage({
-    super.key,
-    required this.namaPengguna,
-  });
+  const TambahJadwalPage({super.key, required this.namaPengguna});
 
   @override
   State<TambahJadwalPage> createState() => _TambahJadwalPageState();
@@ -23,18 +19,18 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   final pesertaController = TextEditingController(text: "1");
 
   bool isLoading = false;
-  bool isDropdownLoading = true;
 
-  List<Map<String, dynamic>> perusahaanList = [];
-  List<Map<String, dynamic>> divisiList = [];
-  List<Map<String, dynamic>> ruanganList = [];
-
-  int? selectedPerusahaanId;
-  int? selectedDivisiId;
-  int? selectedRuanganId;
+  // Variabel untuk menyimpan ID yang dipilih
+  int? selectedPerusahaanId, selectedDivisiId, selectedRuanganId;
+  // Variabel untuk menyimpan jam & menit
   String? jamMulai, jamSelesai, menitMulai, menitSelesai;
 
-  final jamList = List.generate(12, (i) => "${(i + 8).toString().padLeft(2, '0')}");
+  // Data dropdown menggunakan Map<id, nama>
+  final Map<int, String> perusahaanMap = {1: "PT Migas Utama Jabar", 2: "PT MUJ ONWJ", 3: "PT ENM", 4: "PT MUJI"};
+  final Map<int, String> divisiMap = {1: "Sekretaris Perusahaan", 2: "Satuan Pengawas Internal", 3: "Manajemen Aset"};
+  final Map<int, String> ruanganMap = {1: "Ruang Rapat Biomasa", 2: "Ruang Rapat Energi Angin", 3: "Ruang Rapat Gas Bumi", 4: "Ruang Rapat Energi Matahari", 5: "Ruang Rapat Minyak Bumi"};
+
+  final jamList = List.generate(12, (i) => (i + 8).toString().padLeft(2, '0'));
   final menitList = ["00", "15", "30", "45"];
 
   @override
@@ -42,63 +38,6 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     super.initState();
     namaController = TextEditingController(text: widget.namaPengguna);
     tanggalController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _loadDropdownData();
-  }
-
-  Future<void> _loadDropdownData() async {
-    try {
-      final results = await Future.wait([
-        JadwalApiService.getPerusahaanList(),
-        JadwalApiService.getDivisiList(),
-        JadwalApiService.getRuanganList(),
-      ]);
-      if (mounted) {
-        setState(() {
-          perusahaanList = results[0];
-          divisiList = results[1];
-          ruanganList = results[2];
-          isDropdownLoading = false;
-        });
-      }
-    } catch (e) {
-      if(mounted) {
-        _showError("Gagal memuat data form: $e");
-        Navigator.pop(context);
-      }
-    }
-  }
-
-  Future<void> _simpanJadwal() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => isLoading = true);
-      try {
-        final data = {
-          "agenda": agendaController.text,
-          "perusahaan_id": selectedPerusahaanId,
-          "divisi_id": selectedDivisiId,
-          "user": namaController.text,
-          "ruangan_id": selectedRuanganId,
-          "tanggal": tanggalController.text,
-          "jam_mulai": "$jamMulai:$menitMulai:00",
-          "jam_selesai": "$jamSelesai:$menitSelesai:00",
-          "jml_peserta": int.tryParse(pesertaController.text) ?? 1,
-          "keterangan": catatanController.text,
-        };
-        final success = await JadwalApiService.addJadwal(data);
-        if(mounted) {
-          if(success) {
-            _showSuccess("Jadwal berhasil ditambahkan!");
-            Navigator.pop(context, true);
-          } else {
-            _showError("Gagal menyimpan jadwal.");
-          }
-        }
-      } catch (e) {
-        if(mounted) _showError("Terjadi kesalahan: $e");
-      } finally {
-        if(mounted) setState(() => isLoading = false);
-      }
-    }
   }
 
   @override
@@ -111,10 +50,39 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     super.dispose();
   }
 
+  Future<void> _simpanJadwal() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
+      try {
+        final data = {
+          "agenda": agendaController.text,
+          "perusahaan_id": selectedPerusahaanId, // Mengirim ID
+          "divisi": selectedDivisiId,             // Mengirim ID
+          "ruangan": selectedRuanganId,           // Mengirim ID
+          "tanggal": tanggalController.text,
+          "jam_mulai": "$jamMulai:$menitMulai",
+          "jam_selesai": "$jamSelesai:$menitSelesai",
+          "jml_peserta": int.tryParse(pesertaController.text) ?? 1,
+          "keterangan": catatanController.text.isNotEmpty ? catatanController.text : null,
+          "status": 1 // Status default saat membuat (misal: 1 untuk 'PENDING')
+        };
+
+        await JadwalApiService.addJadwal(data);
+        if(mounted) {
+          _showSuccess("Jadwal berhasil ditambahkan!");
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if(mounted) _showError("Terjadi kesalahan: $e");
+      } finally {
+        if(mounted) setState(() => isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -122,14 +90,12 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
             children: [
               _buildHeader(),
               Expanded(
-                child: isDropdownLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: _buildFormContent(),
                 ),
               ),
-              if (!isDropdownLoading) _buildBottomButtons(),
+              _buildBottomButtons(),
             ],
           ),
         ),
@@ -137,14 +103,11 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     );
   }
 
+  // --- WIDGET BUILDERS ---
+
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 3, offset: const Offset(0, 1))],
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -163,15 +126,15 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
         const SizedBox(height: 12),
         _buildTanggalField(),
         const SizedBox(height: 12),
-        _buildDropdownPerusahaan(),
+        _buildDropdown("Perusahaan", "Pilih Perusahaan", perusahaanMap, selectedPerusahaanId, (v) => setState(() => selectedPerusahaanId = v)),
+        const SizedBox(height: 12),
+        _buildDropdown("Divisi", "Pilih Divisi", divisiMap, selectedDivisiId, (v) => setState(() => selectedDivisiId = v)),
+        const SizedBox(height: 12),
+        _buildDropdown("Ruangan", "Pilih Ruangan", ruanganMap, selectedRuanganId, (v) => setState(() => selectedRuanganId = v)),
         const SizedBox(height: 12),
         _buildJamMenit("Jam Mulai", jamMulai, menitMulai, (v) => setState(() => jamMulai = v), (v) => setState(() => menitMulai = v)),
         const SizedBox(height: 12),
-        _buildDropdownDivisi(),
-        const SizedBox(height: 12),
         _buildJamMenit("Jam Selesai", jamSelesai, menitSelesai, (v) => setState(() => jamSelesai = v), (v) => setState(() => menitSelesai = v)),
-        const SizedBox(height: 12),
-        _buildDropdownRuangan(),
         const SizedBox(height: 12),
         _buildTextField(pesertaController, "Jml Peserta", keyboard: TextInputType.number),
         const SizedBox(height: 12),
@@ -183,12 +146,8 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   }
 
   Widget _buildBottomButtons() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 3, offset: const Offset(0, -1))],
-      ),
       child: Row(
         children: [
           Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text("Tutup"))),
@@ -203,55 +162,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     );
   }
 
-  DropdownButtonFormField<int> _buildDropdownPerusahaan() {
-    return DropdownButtonFormField<int>(
-      value: selectedPerusahaanId,
-      items: perusahaanList.map((item) => DropdownMenuItem(value: item['id'] as int, child: Text(item['callsign'] as String))).toList(),
-      onChanged: (v) => setState(() => selectedPerusahaanId = v),
-      decoration: const InputDecoration(labelText: "Perusahaan", border: OutlineInputBorder()),
-      validator: (v) => v == null ? 'Wajib diisi' : null,
-    );
-  }
-
-  DropdownButtonFormField<int> _buildDropdownDivisi() {
-    return DropdownButtonFormField<int>(
-      value: selectedDivisiId,
-      items: divisiList.map((item) => DropdownMenuItem(value: item['id'] as int, child: Text(item['divisi'] as String))).toList(),
-      onChanged: (v) => setState(() => selectedDivisiId = v),
-      decoration: const InputDecoration(labelText: "Divisi", border: OutlineInputBorder()),
-      validator: (v) => v == null ? 'Wajib diisi' : null,
-    );
-  }
-
-  DropdownButtonFormField<int> _buildDropdownRuangan() {
-    return DropdownButtonFormField<int>(
-      value: selectedRuanganId,
-      items: ruanganList.map((item) => DropdownMenuItem(value: item['id'] as int, child: Text(item['ruangan'] as String))).toList(),
-      onChanged: (v) => setState(() => selectedRuanganId = v),
-      decoration: const InputDecoration(labelText: "Ruangan", border: OutlineInputBorder()),
-      validator: (v) => v == null ? 'Wajib diisi' : null,
-    );
-  }
-
-  Widget _buildJamMenit(
-      String label, String? jam, String? menit,
-      ValueChanged<String?> onJamChanged, ValueChanged<String?> onMenitChanged) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      const SizedBox(height: 4),
-      Row(children: [
-        Expanded(child: DropdownButtonFormField<String>(
-          value: jam, items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onJamChanged,
-          decoration: const InputDecoration(labelText: "Jam", border: OutlineInputBorder()), validator: (v) => v == null ? 'Wajib' : null,
-        )),
-        const SizedBox(width: 8),
-        Expanded(child: DropdownButtonFormField<String>(
-          value: menit, items: menitList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onMenitChanged,
-          decoration: const InputDecoration(labelText: "Menit", border: OutlineInputBorder()), validator: (v) => v == null ? 'Wajib' : null,
-        )),
-      ]),
-    ]);
-  }
+  // --- HELPER WIDGETS ---
 
   TextFormField _buildTextField(TextEditingController controller, String label, {int maxLines = 1, TextInputType keyboard = TextInputType.text, bool readOnly = false, bool filled = false, bool isRequired = true}) {
     return TextFormField(
@@ -262,9 +173,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
           alignLabelWithHint: maxLines > 1,
         ),
         validator: (v) {
-          if (isRequired && (v == null || v.isEmpty)) {
-            return 'Wajib diisi';
-          }
+          if (isRequired && (v == null || v.isEmpty)) { return 'Wajib diisi'; }
           return null;
         }
     );
@@ -280,9 +189,37 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
           tanggalController.text = DateFormat('yyyy-MM-dd').format(date);
         }
       },
-      decoration: const InputDecoration(labelText: "Tanggal", border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+      decoration: InputDecoration(labelText: "Tanggal", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), suffixIcon: const Icon(Icons.calendar_today)),
       validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
     );
+  }
+
+  DropdownButtonFormField<int> _buildDropdown(String label, String hint, Map<int, String> items, int? value, ValueChanged<int?> onChanged) {
+    return DropdownButtonFormField<int>(
+      value: value,
+      items: items.entries.map((entry) => DropdownMenuItem<int>(value: entry.key, child: Text(entry.value))).toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+      validator: (v) => v == null ? 'Wajib diisi' : null,
+    );
+  }
+
+  Widget _buildJamMenit(String label, String? jam, String? menit, ValueChanged<String?> onJamChanged, ValueChanged<String?> onMenitChanged) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      const SizedBox(height: 4),
+      Row(children: [
+        Expanded(child: DropdownButtonFormField<String>(
+          value: jam, items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onJamChanged,
+          decoration: InputDecoration(labelText: "Jam", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))), validator: (v) => v == null ? 'Wajib' : null,
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: DropdownButtonFormField<String>(
+          value: menit, items: menitList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onMenitChanged,
+          decoration: InputDecoration(labelText: "Menit", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))), validator: (v) => v == null ? 'Wajib' : null,
+        )),
+      ]),
+    ]);
   }
 
   void _showError(String message) {

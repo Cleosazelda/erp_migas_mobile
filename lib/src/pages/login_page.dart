@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-// import 'admin/admin_page.dart'; // Halaman admin dinonaktifkan sementara
 import '../../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -20,23 +19,16 @@ class _LoginPageState extends State<LoginPage> {
       _showError("Email dan password tidak boleh kosong.");
       return;
     }
-
     setState(() => isLoading = true);
-
     try {
       final response = await ApiService.login(
         emailController.text,
         passwordController.text,
       );
-
       if (!mounted) return;
-
       if (response["status"] == "success" && response["user"] != null) {
         final firstName = response["user"]["first_name"] ?? "User";
         final lastName = response["user"]["last_name"] ?? "";
-
-        // UPDATE: Hapus logika pengecekan role admin.
-        // Semua pengguna akan diarahkan ke HomePage.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -65,7 +57,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -77,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Card(
-              color: isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.95),
+              color: Colors.white.withOpacity(0.95),
               elevation: 8,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               margin: const EdgeInsets.all(24),

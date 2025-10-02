@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/jadwal_model.dart';
-import '../../../services/jadwal_api_service.dart'; // Import service untuk mengambil data
 
 class JadwalTable extends StatefulWidget {
   final List<JadwalRapat> jadwalList;
@@ -13,10 +12,7 @@ class JadwalTable extends StatefulWidget {
 
 class _JadwalTableState extends State<JadwalTable> {
   String? selectedRoom;
-
-  // --- PERBAIKAN 1: Kosongkan list ini, akan diisi dari API/mock ---
   List<String> rooms = [];
-  bool isRoomLoading = true;
 
   final List<String> times = List.generate(23, (i) { // Jam 08:00 - 19:00
     final hour = 8 + (i / 2).floor();
@@ -29,44 +25,41 @@ class _JadwalTableState extends State<JadwalTable> {
   @override
   void initState() {
     super.initState();
-    _loadRooms();
+    _extractRoomsFromJadwal();
   }
 
-  // --- PERBAIKAN 2: Buat fungsi untuk mengambil SEMUA data ruangan ---
-  Future<void> _loadRooms() async {
-    try {
-      // Panggil service untuk mendapatkan daftar lengkap ruangan
-      final ruanganData = await JadwalApiService.getRuanganList();
-      if(mounted) {
-        setState(() {
-          // Ambil nama ruangan dari data yang didapat
-          rooms = ruanganData.map((r) => r['ruangan'] as String).toList();
-          rooms.sort(); // Urutkan nama ruangan
-
-          // Pilih ruangan pertama sebagai default jika ada
-          if (rooms.isNotEmpty) {
-            selectedRoom = rooms.first;
-          }
-          isRoomLoading = false;
-        });
-      }
-    } catch (e) {
-      if(mounted) {
-        setState(() {
-          isRoomLoading = false;
-        });
-        // Tampilkan error jika gagal memuat ruangan
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal memuat daftar ruangan: $e")));
-      }
+  @override
+  void didUpdateWidget(JadwalTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.jadwalList != oldWidget.jadwalList) {
+      _extractRoomsFromJadwal();
     }
+  }
+
+  void _extractRoomsFromJadwal() {
+    // --- PERBAIKAN UTAMA: Daftar ruangan diambil dari jadwal yang ada ---
+    // Ini membuat tabel tidak perlu loading ulang dari API.
+    if (widget.jadwalList.isEmpty) {
+      setState(() {
+        rooms = ["Tidak ada jadwal hari ini"];
+        selectedRoom = "Tidak ada jadwal hari ini";
+      });
+      return;
+    }
+
+    final uniqueRooms = widget.jadwalList.map((j) => j.ruangan).toSet().toList();
+    uniqueRooms.sort();
+
+    setState(() {
+      rooms = uniqueRooms;
+      if (selectedRoom == null || !rooms.contains(selectedRoom) || selectedRoom == "Tidak ada jadwal hari ini") {
+        selectedRoom = rooms.first;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isRoomLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     // Filter jadwal yang akan ditampilkan berdasarkan ruangan yang dipilih
     final jadwalRuangan = widget.jadwalList.where((j) => j.ruangan == selectedRoom).toList();
 
@@ -74,14 +67,29 @@ class _JadwalTableState extends State<JadwalTable> {
       children: [
         _buildRoomSelector(),
         const SizedBox(height: 16),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: _buildScheduleView(jadwalRuangan),
+        // Jika tidak ada jadwal sama sekali untuk hari itu, tampilkan pesan di area tabel.
+        if (widget.jadwalList.isEmpty)
+          const Expanded(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                  "Tidak ada jadwal rapat yang disetujui untuk tanggal ini.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildScheduleView(jadwalRuangan),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -92,7 +100,7 @@ class _JadwalTableState extends State<JadwalTable> {
       child: DropdownButtonFormField<String>(
         value: selectedRoom,
         items: rooms.map((String room) => DropdownMenuItem<String>(value: room, child: Text(room))).toList(),
-        onChanged: (String? newValue) {
+        onChanged: widget.jadwalList.isEmpty ? null : (String? newValue) {
           if (newValue != null) setState(() => selectedRoom = newValue);
         },
         decoration: InputDecoration(
@@ -104,7 +112,6 @@ class _JadwalTableState extends State<JadwalTable> {
     );
   }
 
-  // Sisa kode di bawah ini tidak perlu diubah, karena sudah benar
   Widget _buildScheduleView(List<JadwalRapat> roomBookings) {
     return Container(
       decoration: BoxDecoration(
@@ -144,9 +151,12 @@ class _JadwalTableState extends State<JadwalTable> {
       child: Stack(
         children: [
           _buildGridLines(),
-          if (roomBookings.isEmpty)
+          if (roomBookings.isEmpty && rooms.first != "Tidak ada jadwal hari ini")
             const Center(
-
+              child: Text(
+                "Jadwal kosong",
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
           ...roomBookings.map((booking) => _buildBookingItem(booking)).toList(),
         ],
@@ -163,37 +173,58 @@ class _JadwalTableState extends State<JadwalTable> {
     );
   }
 
-  Widget _buildBookingItem(JadwalRapat jadwal) {
-    final startTimeString = jadwal.jamMulai.substring(0, 5).replaceAll(':', '.');
-    final endTimeString = jadwal.jamSelesai.substring(0, 5).replaceAll(':', '.');
-    final startIndex = times.indexOf(startTimeString);
-    final endIndex = times.indexOf(endTimeString);
+  // Ganti seluruh fungsi _buildBookingItem dengan ini
 
-    if (startIndex == -1 || endIndex == -1 || endIndex <= startIndex) {
+  Widget _buildBookingItem(JadwalRapat jadwal) {
+    try {
+      // 1. Ambil jam dan menit dari API
+      final startHour = int.parse(jadwal.jamMulai.substring(0, 2));
+      final startMinute = int.parse(jadwal.jamMulai.substring(3, 5));
+
+      final endHour = int.parse(jadwal.jamSelesai.substring(0, 2));
+      final endMinute = int.parse(jadwal.jamSelesai.substring(3, 5));
+
+      // 2. Hitung total menit dari jam 00:00
+      final totalStartMinutes = startHour * 60 + startMinute;
+      final totalEndMinutes = endHour * 60 + endMinute;
+
+      // 3. Hitung posisi berdasarkan menit, dimulai dari jam 08:00
+      // Setiap slot 30 menit memiliki tinggi _slotHeight
+      final startOffset = (totalStartMinutes - (8 * 60)) / 30;
+      final endOffset = (totalEndMinutes - (8 * 60)) / 30;
+
+      // Cek jika jadwal valid dan berada dalam rentang waktu
+      if (startOffset < 0 || endOffset <= startOffset) {
+        return const SizedBox.shrink();
+      }
+
+      final topPosition = startOffset * _slotHeight;
+      final height = (endOffset - startOffset) * _slotHeight;
+
+      return Positioned(
+        top: topPosition,
+        left: 0,
+        right: 0,
+        height: height,
+        child: Container(
+          margin: const EdgeInsets.all(1.0),
+          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.green.shade200)
+          ),
+          child: _buildBookingContent(jadwal),
+        ),
+      );
+
+    } catch (e) {
+      // Jika ada error parsing waktu, jangan tampilkan itemnya
+      print("Error parsing time for agenda '${jadwal.agenda}': $e");
       return const SizedBox.shrink();
     }
-
-    final timeSpan = endIndex - startIndex;
-    final topPosition = startIndex * _slotHeight;
-    final height = timeSpan * _slotHeight;
-
-    return Positioned(
-      top: topPosition,
-      left: 0,
-      right: 0,
-      height: height,
-      child: Container(
-        margin: const EdgeInsets.all(1.0),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.green.shade200)
-        ),
-        child: _buildBookingContent(jadwal),
-      ),
-    );
   }
+
 
   Widget _buildBookingContent(JadwalRapat jadwal) {
     return Column(

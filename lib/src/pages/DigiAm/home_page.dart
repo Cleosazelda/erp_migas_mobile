@@ -4,6 +4,8 @@ import 'jadwal_table.dart';
 import 'tambah_jadwal_page.dart';
 import '../../../services/jadwal_api_service.dart';
 import '../../../src/models/jadwal_model.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
 
 class DigiAmHomePage extends StatefulWidget {
   final String firstName;
@@ -21,7 +23,7 @@ class DigiAmHomePage extends StatefulWidget {
 
 class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  DateTime selectedDate = DateTime(2025, 5, 19); // Sesuai data mock
+  DateTime selectedDate = DateTime.now();
   late Future<List<JadwalRapat>> _futureJadwal;
 
   @override
@@ -29,6 +31,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _futureJadwal = JadwalApiService.getAllJadwal();
+    initializeDateFormatting('id_ID', null);
   }
 
   void _reloadData() {
@@ -160,8 +163,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                 }
                 final semuaJadwal = snapshot.data ?? [];
 
-                // --- PERBAIKAN DI SINI ---
-                // Filter hanya jadwal yang statusnya 2 (DISETUJUI) untuk tampilan tabel
                 final jadwalTampil = semuaJadwal.where((jadwal) {
                   return jadwal.status == 2 && DateUtils.isSameDay(jadwal.tanggal, selectedDate);
                 }).toList();
@@ -242,27 +243,36 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildListPeminjamanTab() {
+    // Nama lengkap pengguna yang sedang login
+    final String currentUser = "${widget.firstName} ${widget.lastName}";
+
     return FutureBuilder<List<JadwalRapat>>(
         future: _futureJadwal,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Tidak ada data peminjaman."));
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text("Gagal memuat data peminjaman."));
           }
 
-          // --- PERBAIKAN DI SINI ---
-          // Tidak ada filter status, tampilkan semua jadwal
           final semuaJadwal = snapshot.data!;
+
+          // --- PERUBAHAN UTAMA DI SINI ---
+          // Filter list untuk hanya menampilkan jadwal milik pengguna yang login
+          final jadwalMilikUser = semuaJadwal.where((jadwal) => jadwal.pic == currentUser).toList();
+
+          if (jadwalMilikUser.isEmpty) {
+            return const Center(child: Text("Anda belum memiliki riwayat peminjaman."));
+          }
 
           return Container(
             color: Colors.grey.shade50,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: semuaJadwal.length,
+              itemCount: jadwalMilikUser.length, // Gunakan list yang sudah difilter
               itemBuilder: (context, index) {
-                final jadwal = semuaJadwal[index];
+                final jadwal = jadwalMilikUser[index]; // Gunakan list yang sudah difilter
                 return _meetingCard(jadwal);
               },
             ),
@@ -279,13 +289,20 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Padding(
         padding: const EdgeInsets.all(16),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(jadwal.ruangan, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                Flexible(
+                  child: Text(
+                    jadwal.ruangan,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
@@ -310,15 +327,11 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             const SizedBox(height: 12),
             Text(jadwal.agenda, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
-            Text("${jadwal.perusahaan} - ${jadwal.divisi}", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            Text("${jadwal.jumlahPeserta} Org", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Text("PIC: ${jadwal.pic}", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                const SizedBox(width: 16),
-                Text("Peserta: ${jadwal.jumlahPeserta} orang", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-              ],
-            ),
+            Text("Peminjam: ${jadwal.pic}", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            Text(jadwal.divisi, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            Text(jadwal.perusahaan, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
           ],
         ),
       ),

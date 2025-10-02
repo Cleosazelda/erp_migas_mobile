@@ -3,7 +3,7 @@
 class JadwalRapat {
   final int id;
   final String agenda;
-  final String pic; // Menggunakan 'user' dari DB sebagai PIC
+  final String pic;
   final DateTime tanggal;
   final String jamMulai;
   final String jamSelesai;
@@ -27,21 +27,37 @@ class JadwalRapat {
     required this.ruangan,
   });
 
-  // Factory constructor untuk membuat instance dari JSON
   factory JadwalRapat.fromJson(Map<String, dynamic> json) {
+    // Helper function untuk parsing tanggal yang lebih aman
+    DateTime _safeParseDateTime(String? dateString) {
+      if (dateString == null) return DateTime.now();
+      try {
+        return DateTime.parse(dateString);
+      } catch (e) {
+        // Jika format tanggal dari API salah, gunakan tanggal hari ini sebagai fallback
+        print("Error parsing date: $dateString. Defaulting to now.");
+        return DateTime.now();
+      }
+    }
+
     return JadwalRapat(
-      id: json['id_agenda'] as int,
-      agenda: json['agenda'] as String,
-      pic: json['user'] as String,
-      tanggal: DateTime.parse(json['tanggal'] as String),
-      jamMulai: json['jam_mulai'] as String,
-      jamSelesai: json['jam_selesai'] as String,
-      jumlahPeserta: json['jml_peserta'] as int,
-      status: json['status'] as int,
-      // Mengambil nama dari data relasi yang di-JOIN (atau dari mock)
-      perusahaan: json['perusahaan_nama'] ?? 'N/A',
-      divisi: json['divisi_nama'] ?? 'N/A',
-      ruangan: json['ruangan_nama'] ?? 'N/A',
+      id: json['id'] ?? 0,
+      agenda: json['agenda']?.toString() ?? 'Tanpa Agenda',
+
+      // Mengambil nama PIC dari field 'user' di JSON
+      pic: json['user']?.toString() ?? 'N/A',
+
+      tanggal: _safeParseDateTime(json['tanggal']),
+
+      jamMulai: json['jam_mulai']?.toString() ?? '00:00:00',
+      jamSelesai: json['jam_selesai']?.toString() ?? '00:00:00',
+      jumlahPeserta: json['jml_peserta'] ?? 0,
+      status: json['status'] ?? 0,
+      perusahaan: json['perusahaan']?.toString() ?? 'N/A',
+      divisi: json['divisi']?.toString() ?? 'N/A',
+
+      // Mengambil nama ruangan dari field 'nama_ruangan' di JSON
+      ruangan: json['nama_ruangan']?.toString() ?? 'N/A',
     );
   }
 }

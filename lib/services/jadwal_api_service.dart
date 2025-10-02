@@ -1,47 +1,38 @@
+// lib/services/jadwal_api_service.dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'api_service.dart'; // Impor ApiService untuk mendapatkan headers
 import '../src/models/jadwal_model.dart';
-import 'jadwal_mock_service.dart';
 
 class JadwalApiService {
-  // =================================================================
-  // UBAH MENJADI 'false' SAAT BACKEND SUDAH SIAP
-  static const bool USE_MOCK = true;
-  // =================================================================
-
-  static const String baseUrl = "http://103.165.226.178:8084/api";
-
+  // Fungsi untuk mengambil semua jadwal
   static Future<List<JadwalRapat>> getAllJadwal() async {
-    if (USE_MOCK) {
-      return await JadwalMockService.getAllJadwal();
+    final response = await http.get(
+      Uri.parse("${ApiService.baseUrl}/ruang-rapat"),
+      headers: ApiService.headers,
+    );
+
+    if (response.statusCode == 200) {
+      // --- PERBAIKAN DI SINI ---
+      // Langsung decode response body karena API mengembalikan List
+      final List<dynamic> data = jsonDecode(response.body);
+
+      return data.map((json) => JadwalRapat.fromJson(json)).toList();
+    } else {
+      throw Exception("Gagal memuat data jadwal");
     }
-    // Logika untuk API asli akan ditambahkan di sini nanti
-    throw UnimplementedError("Backend endpoint for getAllJadwal is not ready yet.");
   }
 
-  static Future<List<Map<String, dynamic>>> getPerusahaanList() async {
-    if (USE_MOCK) {
-      return await JadwalMockService.getPerusahaanList();
-    }
-    throw UnimplementedError("Backend endpoint for getPerusahaanList is not ready yet.");
-  }
+  // Fungsi untuk POST/ADD JADWAL (sudah benar, tidak perlu diubah)
+  static Future<void> addJadwal(Map<String, dynamic> data) async {
+    final response = await http.post(
+      Uri.parse("${ApiService.baseUrl}/ruang-rapat"),
+      headers: ApiService.headers,
+      body: jsonEncode(data),
+    );
 
-  static Future<List<Map<String, dynamic>>> getDivisiList() async {
-    if (USE_MOCK) {
-      return await JadwalMockService.getDivisiList();
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception("Gagal menambahkan jadwal. Error: ${response.body}");
     }
-    throw UnimplementedError("Backend endpoint for getDivisiList is not ready yet.");
-  }
-
-  static Future<List<Map<String, dynamic>>> getRuanganList() async {
-    if (USE_MOCK) {
-      return await JadwalMockService.getRuanganList();
-    }
-    throw UnimplementedError("Backend endpoint for getRuanganList is not ready yet.");
-  }
-
-  static Future<bool> addJadwal(Map<String, dynamic> jadwalData) async {
-    if (USE_MOCK) {
-      return await JadwalMockService.addJadwal(jadwalData);
-    }
-    throw UnimplementedError("Backend endpoint for addJadwal is not ready yet.");
   }
 }
