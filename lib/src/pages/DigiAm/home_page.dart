@@ -52,6 +52,20 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      // --- PENYESUAIAN TEMA ---
+      // Builder untuk menyesuaikan tema DatePicker
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: Colors.green, // Header background
+              onPrimary: Colors.white, // Header text
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       _onDateChanged(picked);
@@ -87,6 +101,10 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
 
   AppBar _buildAppBar(BuildContext context) {
     final fullName = "${widget.firstName} ${widget.lastName}";
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppBar(
       title: Row(
         children: [
@@ -95,21 +113,22 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Manajemen Aset", style: TextStyle(fontSize: 18, color: Colors.black, fontWeight: FontWeight.bold)),
-              Text("Welcome $fullName!", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text("Manajemen Aset", style: TextStyle(fontSize: 18, color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
+              Text("Welcome $fullName!", style: TextStyle(fontSize: 12, color: theme.hintColor)),
             ],
           ),
         ],
       ),
-      backgroundColor: Colors.white,
+      // --- PENYESUAIAN TEMA ---
+      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
       elevation: 1,
       leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.black),
+        icon: Icon(Icons.menu, color: theme.colorScheme.onSurface),
         onPressed: () => Scaffold.of(context).openDrawer(),
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.black),
+          icon: Icon(Icons.refresh, color: theme.colorScheme.onSurface),
           onPressed: _reloadData,
         ),
       ],
@@ -147,7 +166,8 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
 
   Widget _buildRuangRapatTab() {
     return Container(
-      color: Colors.grey.shade50,
+      // --- PENYESUAIAN TEMA ---
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
           _buildDateSelector(),
@@ -177,8 +197,10 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildDateSelector() {
+    // --- PENYESUAIAN TEMA ---
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: Colors.white,
+      color: isDark ? Colors.grey[900] : Colors.white,
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -221,8 +243,12 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   ListTile _drawerItem(IconData icon, String title, {bool isSelected = false}) {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
+    final color = isSelected ? Colors.green : theme.colorScheme.onSurface;
+
     return ListTile(
-      title: Text(title, style: TextStyle(color: isSelected ? Colors.green : Colors.black, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+      title: Text(title, style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       leading: Icon(icon, color: isSelected ? Colors.green : Colors.grey.shade600),
       tileColor: isSelected ? Colors.green.shade50 : null,
       onTap: () {},
@@ -243,7 +269,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildListPeminjamanTab() {
-    // Nama lengkap pengguna yang sedang login
     final String currentUser = "${widget.firstName} ${widget.lastName}";
 
     return FutureBuilder<List<JadwalRapat>>(
@@ -257,9 +282,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
           }
 
           final semuaJadwal = snapshot.data!;
-
-          // --- PERUBAHAN UTAMA DI SINI ---
-          // Filter list untuk hanya menampilkan jadwal milik pengguna yang login
           final jadwalMilikUser = semuaJadwal.where((jadwal) => jadwal.pic == currentUser).toList();
 
           if (jadwalMilikUser.isEmpty) {
@@ -267,12 +289,13 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
           }
 
           return Container(
-            color: Colors.grey.shade50,
+            // --- PENYESUAIAN TEMA ---
+            color: Theme.of(context).scaffoldBackgroundColor,
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: jadwalMilikUser.length, // Gunakan list yang sudah difilter
+              itemCount: jadwalMilikUser.length,
               itemBuilder: (context, index) {
-                final jadwal = jadwalMilikUser[index]; // Gunakan list yang sudah difilter
+                final jadwal = jadwalMilikUser[index];
                 return _meetingCard(jadwal);
               },
             ),
@@ -283,13 +306,16 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
 
   Widget _meetingCard(JadwalRapat jadwal) {
     final time = "${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}";
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      // Card color diatur oleh tema utama, jadi tidak perlu diubah
       child: Padding(
         padding: const EdgeInsets.all(16),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -299,7 +325,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                 Flexible(
                   child: Text(
                     jadwal.ruangan,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -319,19 +345,19 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                Icon(Icons.calendar_today, size: 16, color: theme.hintColor),
                 const SizedBox(width: 8),
-                Text("${DateFormat('dd/MM/yyyy').format(jadwal.tanggal)} | $time", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                Text("${DateFormat('dd/MM/yyyy').format(jadwal.tanggal)} | $time", style: TextStyle(color: theme.hintColor, fontSize: 14)),
               ],
             ),
             const SizedBox(height: 12),
-            Text(jadwal.agenda, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(jadwal.agenda, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface)),
             const SizedBox(height: 8),
-            Text("${jadwal.jumlahPeserta} Org", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            Text("${jadwal.jumlahPeserta} Org", style: TextStyle(color: theme.hintColor, fontSize: 14)),
             const SizedBox(height: 4),
-            Text("Peminjam: ${jadwal.pic}", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-            Text(jadwal.divisi, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-            Text(jadwal.perusahaan, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+            Text("Peminjam: ${jadwal.pic}", style: TextStyle(color: theme.hintColor, fontSize: 14)),
+            Text(jadwal.divisi, style: TextStyle(color: theme.hintColor, fontSize: 14)),
+            Text(jadwal.perusahaan, style: TextStyle(color: theme.hintColor, fontSize: 14)),
           ],
         ),
       ),

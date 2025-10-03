@@ -5,7 +5,15 @@ import 'login_page.dart';
 import 'profile_page.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  // 1. Tambahkan variabel untuk menerima nama
+  final String firstName;
+  final String lastName;
+
+  const SettingsPage({
+    super.key,
+    required this.firstName,
+    required this.lastName,
+  });
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
@@ -66,7 +74,16 @@ class _SettingsPageState extends State<SettingsPage> {
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text("Profile"),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+              // 2. Saat ke ProfilePage, kirim data nama yang sudah diterima
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfilePage(
+                    firstName: widget.firstName,
+                    lastName: widget.lastName,
+                  ),
+                ),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.logout),

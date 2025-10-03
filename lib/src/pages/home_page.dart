@@ -26,7 +26,7 @@ class _HomePageState extends State<HomePage> {
     _pages = [
       _HomeGrid(firstName: widget.firstName, lastName: widget.lastName),
       const HistoryPage(),
-      const SettingsPage(),
+      SettingsPage(firstName: widget.firstName, lastName: widget.lastName),
     ];
   }
 
@@ -94,7 +94,15 @@ class _HomeGrid extends StatelessWidget {
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfilePage(
+                                firstName: firstName, // Kirim data firstName
+                                lastName: lastName,   // Kirim data lastName
+                              ),
+                            ),
+                          ),
                           child: const CircleAvatar(radius: 25, backgroundColor: Colors.grey, backgroundImage: AssetImage("assets/images/logo.png")),
                         ),
                         const SizedBox(width: 12),

@@ -20,12 +20,9 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
 
   bool isLoading = false;
 
-  // Variabel untuk menyimpan ID yang dipilih
   int? selectedPerusahaanId, selectedDivisiId, selectedRuanganId;
-  // Variabel untuk menyimpan jam & menit
   String? jamMulai, jamSelesai, menitMulai, menitSelesai;
 
-  // Data dropdown menggunakan Map<id, nama>
   final Map<int, String> perusahaanMap = {1: "PT Migas Utama Jabar", 2: "PT MUJ ONWJ", 3: "PT ENM", 4: "PT MUJI"};
   final Map<int, String> divisiMap = {1: "Sekretaris Perusahaan", 2: "Satuan Pengawas Internal", 3: "Manajemen Aset"};
   final Map<int, String> ruanganMap = {1: "Ruang Rapat Biomasa", 2: "Ruang Rapat Energi Angin", 3: "Ruang Rapat Gas Bumi", 4: "Ruang Rapat Energi Matahari", 5: "Ruang Rapat Minyak Bumi"};
@@ -56,15 +53,15 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
       try {
         final data = {
           "agenda": agendaController.text,
-          "perusahaan_id": selectedPerusahaanId, // Mengirim ID
-          "divisi": selectedDivisiId,             // Mengirim ID
-          "ruangan": selectedRuanganId,           // Mengirim ID
+          "perusahaan_id": selectedPerusahaanId,
+          "divisi": selectedDivisiId,
+          "ruangan": selectedRuanganId,
           "tanggal": tanggalController.text,
           "jam_mulai": "$jamMulai:$menitMulai",
           "jam_selesai": "$jamSelesai:$menitSelesai",
           "jml_peserta": int.tryParse(pesertaController.text) ?? 1,
           "keterangan": catatanController.text.isNotEmpty ? catatanController.text : null,
-          "status": 1 // Status default saat membuat (misal: 1 untuk 'PENDING')
+          "status": 1
         };
 
         await JadwalApiService.addJadwal(data);
@@ -83,6 +80,8 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // --- PENYESUAIAN TEMA ---
+      // Scaffold akan otomatis mengambil warna dari tema utama (dialogBackgroundColor)
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -106,13 +105,21 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   // --- WIDGET BUILDERS ---
 
   Widget _buildHeader() {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text("Tambah Jadwal Ruang Rapat", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+          Text(
+            "Tambah Jadwal Ruang Rapat",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
+          ),
         ],
       ),
     );
@@ -165,10 +172,16 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   // --- HELPER WIDGETS ---
 
   TextFormField _buildTextField(TextEditingController controller, String label, {int maxLines = 1, TextInputType keyboard = TextInputType.text, bool readOnly = false, bool filled = false, bool isRequired = true}) {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return TextFormField(
         controller: controller, maxLines: maxLines, keyboardType: keyboard, readOnly: readOnly,
         decoration: InputDecoration(
-          labelText: label, filled: filled, fillColor: Colors.grey.shade200,
+          labelText: label,
+          filled: filled,
+          fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           alignLabelWithHint: maxLines > 1,
         ),
@@ -184,7 +197,24 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
       controller: tanggalController,
       readOnly: true,
       onTap: () async {
-        final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+        final date = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2030),
+          // --- PENYESUAIAN TEMA ---
+          builder: (context, child) {
+            final theme = Theme.of(context);
+            return Theme(
+              data: theme.copyWith(
+                colorScheme: theme.colorScheme.copyWith(
+                  primary: Colors.green, onPrimary: Colors.white,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
         if (date != null) {
           tanggalController.text = DateFormat('yyyy-MM-dd').format(date);
         }

@@ -37,8 +37,6 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   void _extractRoomsFromJadwal() {
-    // --- PERBAIKAN UTAMA: Daftar ruangan diambil dari jadwal yang ada ---
-    // Ini membuat tabel tidak perlu loading ulang dari API.
     if (widget.jadwalList.isEmpty) {
       setState(() {
         rooms = ["Tidak ada jadwal hari ini"];
@@ -60,23 +58,21 @@ class _JadwalTableState extends State<JadwalTable> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter jadwal yang akan ditampilkan berdasarkan ruangan yang dipilih
     final jadwalRuangan = widget.jadwalList.where((j) => j.ruangan == selectedRoom).toList();
 
     return Column(
       children: [
         _buildRoomSelector(),
         const SizedBox(height: 16),
-        // Jika tidak ada jadwal sama sekali untuk hari itu, tampilkan pesan di area tabel.
         if (widget.jadwalList.isEmpty)
-          const Expanded(
+          Expanded(
             child: Center(
               child: Padding(
-                padding: EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Text(
                   "Tidak ada jadwal rapat yang disetujui untuk tanggal ini.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  style: TextStyle(fontSize: 16, color: Theme.of(context).hintColor),
                 ),
               ),
             ),
@@ -113,18 +109,20 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildScheduleView(List<JadwalRapat> roomBookings) {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: theme.dividerColor),
         borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
+        color: theme.cardColor,
       ),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTimeColumn(),
-            Container(width: 1, color: Colors.grey.shade300),
+            Container(width: 1, color: theme.dividerColor),
             _buildScheduleColumn(roomBookings),
           ],
         ),
@@ -133,29 +131,33 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildTimeColumn() {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return SizedBox(
       width: 80,
       child: Column(
         children: times.map((time) => Container(
           height: _slotHeight,
           alignment: Alignment.center,
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 0.5))),
-          child: Text(time),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor, width: 0.5))),
+          child: Text(time, style: TextStyle(color: theme.colorScheme.onSurface)),
         )).toList(),
       ),
     );
   }
 
   Widget _buildScheduleColumn(List<JadwalRapat> roomBookings) {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return Expanded(
       child: Stack(
         children: [
           _buildGridLines(),
           if (roomBookings.isEmpty && rooms.first != "Tidak ada jadwal hari ini")
-            const Center(
+            Center(
               child: Text(
                 "Jadwal kosong",
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: theme.hintColor),
               ),
             ),
           ...roomBookings.map((booking) => _buildBookingItem(booking)).toList(),
@@ -165,41 +167,38 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildGridLines() {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return Column(
       children: List.generate(times.length, (index) => Container(
         height: _slotHeight,
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 0.5))),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.dividerColor, width: 0.5))),
       )),
     );
   }
 
-  // Ganti seluruh fungsi _buildBookingItem dengan ini
-
   Widget _buildBookingItem(JadwalRapat jadwal) {
     try {
-      // 1. Ambil jam dan menit dari API
       final startHour = int.parse(jadwal.jamMulai.substring(0, 2));
       final startMinute = int.parse(jadwal.jamMulai.substring(3, 5));
-
       final endHour = int.parse(jadwal.jamSelesai.substring(0, 2));
       final endMinute = int.parse(jadwal.jamSelesai.substring(3, 5));
 
-      // 2. Hitung total menit dari jam 00:00
       final totalStartMinutes = startHour * 60 + startMinute;
       final totalEndMinutes = endHour * 60 + endMinute;
 
-      // 3. Hitung posisi berdasarkan menit, dimulai dari jam 08:00
-      // Setiap slot 30 menit memiliki tinggi _slotHeight
       final startOffset = (totalStartMinutes - (8 * 60)) / 30;
       final endOffset = (totalEndMinutes - (8 * 60)) / 30;
 
-      // Cek jika jadwal valid dan berada dalam rentang waktu
       if (startOffset < 0 || endOffset <= startOffset) {
         return const SizedBox.shrink();
       }
 
       final topPosition = startOffset * _slotHeight;
       final height = (endOffset - startOffset) * _slotHeight;
+
+      // --- PENYESUAIAN TEMA ---
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
       return Positioned(
         top: topPosition,
@@ -210,46 +209,46 @@ class _JadwalTableState extends State<JadwalTable> {
           margin: const EdgeInsets.all(1.0),
           padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: isDark ? Colors.green.withOpacity(0.2) : Colors.green.shade50,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.green.shade200)
+              border: Border.all(color: isDark ? Colors.green.shade700 : Colors.green.shade200)
           ),
           child: _buildBookingContent(jadwal),
         ),
       );
-
     } catch (e) {
-      // Jika ada error parsing waktu, jangan tampilkan itemnya
       print("Error parsing time for agenda '${jadwal.agenda}': $e");
       return const SizedBox.shrink();
     }
   }
 
-
   Widget _buildBookingContent(JadwalRapat jadwal) {
+    // --- PENYESUAIAN TEMA ---
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "${jadwal.agenda} (${jadwal.jumlahPeserta} Org)",
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, height: 1.3),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, height: 1.3, color: theme.colorScheme.onSurface),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
         Text(
           "${jadwal.perusahaan} - ${jadwal.divisi}",
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+          style: TextStyle(fontSize: 11, color: theme.hintColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         Text(
           "PIC : ${jadwal.pic}",
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+          style: TextStyle(fontSize: 11, color: theme.hintColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         const Spacer(),
+        // Status tag tidak perlu diubah karena sudah menggunakan warna solid
         Align(
           alignment: Alignment.bottomRight,
           child: Container(

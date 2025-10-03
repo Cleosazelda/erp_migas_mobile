@@ -1,81 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  // Tambahkan variabel untuk menerima data nama
+  final String firstName;
+  final String lastName;
+
+  const ProfilePage({
+    super.key,
+    required this.firstName,
+    required this.lastName,
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool isEditing = false;
+  File? _image;
 
-  final TextEditingController firstNameController = TextEditingController(text: "Hadi");
-  final TextEditingController lastNameController = TextEditingController(text: "Ramdani");
-  final TextEditingController emailController = TextEditingController(text: "hadiramdani2@gmail.com");
-  final TextEditingController jabatanController = TextEditingController(text: "Staff IT");
-  final TextEditingController divisiController = TextEditingController(text: "Teknologi Informasi");
+  // Hapus data dummy, karena kita akan pakai data dari login
+  // final String firstName = "Hadi";
+  // final String lastName = "Ramdani";
+
+  // Email belum ada datanya dari login, jadi kita hardcode sementara
+  final String email = "user@example.com";
+
+  Future<void> _pickImage() async {
+    // Fungsi ini tetap dummy untuk saat ini
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Fitur ganti foto profil akan segera hadir!")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Gunakan data nama yang dikirim dari halaman sebelumnya
+    final String fullName = "${widget.firstName} ${widget.lastName}";
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
         centerTitle: true,
         elevation: 0,
-        actions: [
-          if (!isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => isEditing = true),
-            ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // UI lainnya tidak perlu diubah, hanya datanya yang statis
-            if (!isEditing) ...[
-              Text(
-                "${firstNameController.text} ${lastNameController.text}",
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(emailController.text, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-              const SizedBox(height: 30),
-              _buildInfoCard(context, icon: Icons.badge, title: "Jabatan", subtitle: jabatanController.text),
-              const SizedBox(height: 12),
-              _buildInfoCard(context, icon: Icons.business, title: "Divisi", subtitle: divisiController.text),
-            ] else ...[
-              const SizedBox(height: 20),
-              _buildEditField("Nama Depan", firstNameController),
-              const SizedBox(height: 16),
-              _buildEditField("Nama Belakang", lastNameController),
-              const SizedBox(height: 16),
-              _buildEditField("Email", emailController),
-              const SizedBox(height: 16),
-              _buildEditField("Jabatan", jabatanController, isEnabled: false),
-              const SizedBox(height: 16),
-              _buildEditField("Divisi", divisiController, isEnabled: false),
-              const SizedBox(height: 30),
-              Row(children: [
-                Expanded(child: OutlinedButton(onPressed: () => setState(() => isEditing = false), child: const Text("Batal"))),
-                const SizedBox(width: 16),
-                Expanded(child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                  onPressed: () { /* Logika update profile */ },
-                  child: const Text("Simpan"),
-                )),
-              ]),
-            ],
+            const SizedBox(height: 20),
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: _image != null
+                      ? FileImage(_image!) as ImageProvider
+                      : const AssetImage("assets/images/logo.png"),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Tampilkan nama lengkap dari data login
+            Text(
+              fullName,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+
+            Text(
+              email, // Tampilkan email (masih hardcode)
+              style: TextStyle(fontSize: 16, color: theme.hintColor),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildEditField(String label, TextEditingController controller, {bool isEnabled = true}) { return TextFormField(); }
-  Widget _buildInfoCard(BuildContext context, {required IconData icon, required String title, required String subtitle}) { return Card(); }
 }
