@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 class MockApiService {
-  static const bool USE_MOCK = true; // Set false when backend ready
+  static const bool USE_MOCK = false; // Set false when backend ready
   static String? _token;
 
   // Mock data
@@ -154,7 +154,7 @@ class MockApiService {
     if (jabatan != null) _currentUser!['jabatan'] = jabatan;
     if (divisi != null) _currentUser!['divisi'] = divisi;
 
-    // Update in mock users list
+
     int userIndex = _mockUsers.indexWhere((u) => u['id'] == _currentUser!['id']);
     if (userIndex != -1) {
       _mockUsers[userIndex] = Map<String, dynamic>.from(_currentUser!);

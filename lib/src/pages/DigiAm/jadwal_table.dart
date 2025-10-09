@@ -258,7 +258,7 @@ class _JadwalTableState extends State<JadwalTable> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              jadwal.status == 2 ? 'DISETUJUI' : (jadwal.status == 1 ? 'PENDING' : 'DITOLAK'),
+              jadwal.status == 2 ? 'DISETUJUI' : (jadwal.status == 1 ? 'DIAJUKAN' : 'DITOLAK'),
               style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
             ),
           ),
