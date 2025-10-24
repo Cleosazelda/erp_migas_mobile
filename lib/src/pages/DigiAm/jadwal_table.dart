@@ -109,7 +109,6 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildScheduleView(List<JadwalRapat> roomBookings) {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
@@ -131,7 +130,6 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildTimeColumn() {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     return SizedBox(
       width: 80,
@@ -147,7 +145,6 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildScheduleColumn(List<JadwalRapat> roomBookings) {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     return Expanded(
       child: Stack(
@@ -167,7 +164,6 @@ class _JadwalTableState extends State<JadwalTable> {
   }
 
   Widget _buildGridLines() {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     return Column(
       children: List.generate(times.length, (index) => Container(
@@ -197,7 +193,6 @@ class _JadwalTableState extends State<JadwalTable> {
       final topPosition = startOffset * _slotHeight;
       final height = (endOffset - startOffset) * _slotHeight;
 
-      // --- PENYESUAIAN TEMA ---
       final isDark = Theme.of(context).brightness == Brightness.dark;
 
       return Positioned(
@@ -222,44 +217,63 @@ class _JadwalTableState extends State<JadwalTable> {
     }
   }
 
+  // --- WIDGET YANG DIPERBARUI ---
   Widget _buildBookingContent(JadwalRapat jadwal) {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 1. Agenda (Bold dan lebih besar)
         Text(
-          "${jadwal.agenda} (${jadwal.jumlahPeserta} Org)",
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, height: 1.3, color: theme.colorScheme.onSurface),
-          maxLines: 2,
+          jadwal.agenda,
+          style: TextStyle(
+            fontSize: 16, // Ukuran font lebih besar
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+          maxLines: 1, // Dibatasi 1 baris agar tidak terlalu ramai
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+
+        // 2. Perusahaan - Divisi
+        Text(
+          // Handle jika data "-" atau null
+          (jadwal.perusahaan == "-" || jadwal.perusahaan.isEmpty) && (jadwal.divisi == "-" || jadwal.divisi.isEmpty)
+              ? "Informasi Perusahaan/Divisi tidak tersedia"
+              : "${jadwal.perusahaan} - ${jadwal.divisi}",
+          style: TextStyle(fontSize: 14, color: theme.hintColor),
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
+
+        // 3. PIC
         Text(
-          "${jadwal.perusahaan} - ${jadwal.divisi}",
-          style: TextStyle(fontSize: 11, color: theme.hintColor),
+          "PIC: ${jadwal.pic}", // Menggunakan 'pic' dari model yang sudah di-mapping dari 'user'
+          style: TextStyle(fontSize: 14, color: theme.hintColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        Text(
-          "PIC : ${jadwal.pic}",
-          style: TextStyle(fontSize: 11, color: theme.hintColor),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const Spacer(),
-        // Status tag tidak perlu diubah karena sudah menggunakan warna solid
+        const Spacer(), // Mendorong status ke bawah
+
+        // 4. Status
         Align(
           alignment: Alignment.bottomRight,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: jadwal.status == 2 ? Colors.green : (jadwal.status == 1 ? Colors.orange : Colors.red),
+              color: jadwal.status == 2
+                  ? Colors.green
+                  : (jadwal.status == 1 ? Colors.orange : Colors.red),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              jadwal.status == 2 ? 'DISETUJUI' : (jadwal.status == 1 ? 'DIAJUKAN' : 'DITOLAK'),
-              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+              jadwal.status == 2
+                  ? 'DISETUJUI'
+                  : (jadwal.status == 1 ? 'PENDING' : 'DITOLAK'), // Mengganti DIAJUKAN menjadi PENDING
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
             ),
           ),
         ),
