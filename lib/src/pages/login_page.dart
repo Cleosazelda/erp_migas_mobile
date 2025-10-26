@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
+import 'admin/admin_page.dart'; // <-- Import the new AdminPage
 import '../../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -26,23 +27,52 @@ class _LoginPageState extends State<LoginPage> {
         passwordController.text,
       );
       if (!mounted) return;
+
+      // Check for success and user data presence
       if (response["status"] == "success" && response["user"] != null) {
-        final firstName = response["user"]["first_name"] ?? "User";
-        final lastName = response["user"]["last_name"] ?? "";
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(firstName: firstName, lastName: lastName),
-          ),
-        );
+        final userData = response["user"];
+        final firstName = userData["first_name"] ?? "User";
+        final lastName = userData["last_name"] ?? "";
+        // Extract the role, default to "user" if not present
+        final role = userData["role"] ?? "user";
+
+        // --- NAVIGATION LOGIC BASED ON ROLE ---
+        if (role == "admin") {
+          // Navigate to AdminPage if role is admin
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminPage(
+                firstName: firstName,
+                lastName: lastName,
+              ),
+            ),
+          );
+        } else {
+          // Navigate to HomePage for any other role (e.g., "user")
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePage(
+                firstName: firstName,
+                lastName: lastName,
+              ),
+            ),
+          );
+        }
+        // --- END OF NAVIGATION LOGIC ---
+
       } else {
+        // Handle login failure
         _showError(response["message"] ?? "Login gagal. Periksa kembali kredensial Anda.");
       }
     } catch (e) {
+      // Handle exceptions (network errors, etc.)
       if (mounted) {
         _showError(e.toString().replaceFirst("Exception: ", ""));
       }
     } finally {
+      // Ensure isLoading is set to false even if errors occur
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -51,6 +81,8 @@ class _LoginPageState extends State<LoginPage> {
 
 
   void _showError(String message) {
+    // Make sure the widget is still mounted before showing SnackBar
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
@@ -58,6 +90,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // --- The rest of your build method remains the same ---
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
