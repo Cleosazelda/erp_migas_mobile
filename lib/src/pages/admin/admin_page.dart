@@ -1,3 +1,5 @@
+// lib/src/pages/admin/admin_page.dart
+
 import 'dart:convert'; // Needed for jsonEncode
 import 'dart:async'; // Needed for Future and TimeoutException
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart'; // Import for Indonesian locale
 
 // Import services, models, and other pages
+// PASTIKAN PATH IMPORT INI SUDAH BENAR SESUAI STRUKTUR FOLDER PROYEK KAMU
 import '../../../services/jadwal_api_service.dart'; // Service to get schedule data
 import '../../../src/models/jadwal_model.dart'; // Model for schedule data
 import '../../../services/api_service.dart'; // For logout function and BASE URL/HEADERS
@@ -28,24 +31,35 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   late TabController _tabController;
   // _selectedDate is now only relevant for the "Ruang Rapat" tab's visualizer
   DateTime _selectedDate = DateTime.now();
-  late Future<List<JadwalRapat>> _futureJadwal;
+  // Use Future for initial load state management in FutureBuilder
+  // Initialize with a completed future containing an empty list to avoid late initialization errors
+  Future<List<JadwalRapat>> _futureJadwal = Future.value([]);
   bool _isProcessingAction = false; // Flag to indicate if an API call is in progress
 
-  // Room list and selection are no longer needed for the List Peminjaman tab state
-  // List<Map<String, dynamic>> _ruanganList = [];
-  // int? _selectedRuanganId;
-  // bool _isLoadingRooms = false;
+  // --- State for Search and Filter ---
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  List<JadwalRapat> _allBookings = []; // Stores all fetched bookings (Source of truth)
+  List<JadwalRapat> _filteredBookings = []; // Stores the list to be displayed after filtering
+
+  // Placeholder filter criteria (can be expanded with more complex logic)
+  String? _selectedFilterChip; // Stores the label of the active quick filter chip
+  // Add state variables for specific filter types if needed later
+  // DateTime? _selectedFilterDate; // Example if using advanced date filter
+  // String? _selectedFilterRoomName; // Example if using advanced room filter
+  // int? _selectedFilterStatus; // Example if using advanced status filter
 
   @override
   void initState() {
     super.initState();
     // Initialize the TabController with 2 tabs
     _tabController = TabController(length: 2, vsync: this);
+    // Add listener to update search query and trigger filtering
+    _searchController.addListener(_onSearchChanged);
     // Ensure Indonesian date formatting is initialized, then load initial data
     initializeDateFormatting('id_ID', null).then((_) {
       if (mounted) { // Check if the widget is still in the tree
-        _loadJadwal(); // Load schedule data
-        // _loadRuanganList(); // No longer needed
+        _loadJadwalAndInitializeFilter(); // Load data and apply initial empty filter
       }
     });
   }
@@ -53,33 +67,190 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _tabController.dispose(); // Clean up the TabController
+    _searchController.removeListener(_onSearchChanged); // Clean up listener
+    _searchController.dispose(); // Clean up controller
     super.dispose();
   }
 
-  // --- Load/Reload Schedule Data ---
-  void _loadJadwal() {
-    if (!mounted) return; // Don't call setState if widget is disposed
+  // --- Load Data and Initialize Filter State ---
+  // Sets the _futureJadwal for FutureBuilder and populates _allBookings
+  Future<void> _loadJadwalAndInitializeFilter() async {
+    if (!mounted) return;
     setState(() {
-      // Fetch ALL schedules (all statuses) using the API service
-      _futureJadwal = JadwalApiService.getAllJadwal();
+      // Set the future for the FutureBuilder to show loading/error state
+      _futureJadwal = JadwalApiService.getAllJadwal().then((bookings) {
+        if (mounted) {
+          _allBookings = bookings; // Store the complete list
+          _sortBookings(_allBookings); // Sort the complete list
+          _applyFilters(); // Apply initial filters (search, date, room)
+        }
+        return _allBookings; // Return the fetched list for FutureBuilder
+      }).catchError((error) {
+        print("Error initial load: $error");
+        if (mounted) {
+          _showSnackBar("Gagal memuat data awal: ${error.toString().replaceFirst('Exception: ', '')}", isError: true);
+          // Ensure lists are empty on error
+          setState(() {
+            _allBookings = [];
+            _filteredBookings = [];
+          });
+        }
+        // Return empty list on error for FutureBuilder
+        throw error; // Rethrow error so FutureBuilder shows error state
+      });
+    });
+  }
+
+  // --- Refresh Data (called by pull-to-refresh and manual refresh button) ---
+  Future<void> _refreshData() async {
+    if (!mounted) return;
+    // Fetch new data
+    try {
+      final bookings = await JadwalApiService.getAllJadwal();
+      if (mounted) {
+        setState(() {
+          _allBookings = bookings; // Update the full list
+          _sortBookings(_allBookings); // Resort the updated list
+          _applyFilters(); // Re-apply current filters and search
+          // Update the Future for the FutureBuilder to resolve quickly with new data
+          _futureJadwal = Future.value(_allBookings);
+        });
+      }
+    } catch (error) {
+      print("Error during refresh: $error");
+      if (mounted) {
+        _showSnackBar("Gagal menyegarkan data: ${error.toString().replaceFirst('Exception: ', '')}", isError: true);
+        // Don't change the future, let it hold the old data or error state
+      }
+    }
+  }
+
+
+  // --- Listener for Search Input Changes ---
+  void _onSearchChanged() {
+    // Avoid unnecessary rebuilds if the text hasn't changed
+    if (_searchQuery != _searchController.text) {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text; // Update the search query state
+          _applyFilters(); // Re-apply all filters whenever search query changes
+        });
+      }
+    }
+  }
+
+  // --- Sort Function (Separated for clarity) ---
+  void _sortBookings(List<JadwalRapat> bookings) {
+    // Sort by date descending (newest first), then by start time ascending
+    bookings.sort((a, b) {
+      int dateComparison = b.tanggal.compareTo(a.tanggal); // Newest date first
+      if (dateComparison != 0) {
+        return dateComparison;
+      } else {
+        // If dates are the same, sort by start time ascending
+        try {
+          // Safely parse time strings
+          final timeAInt = int.tryParse(a.jamMulai.replaceAll(':', ''));
+          final timeBInt = int.tryParse(b.jamMulai.replaceAll(':', ''));
+          if (timeAInt != null && timeBInt != null) {
+            return timeAInt.compareTo(timeBInt);
+          } else if (timeAInt != null) { return -1; } // Valid before invalid
+          else if (timeBInt != null) { return 1; } // Invalid after valid
+          return 0; // Keep original order if both parsing fails
+        } catch (e) {
+          print("Error sorting times during secondary sort: $e");
+          return 0; // Keep original order on error
+        }
+      }
+    });
+  }
+
+
+  // --- Apply All Filters (Search, Quick Chips) ---
+  void _applyFilters() {
+    if (!mounted) return;
+
+    // Start with the full, sorted list
+    List<JadwalRapat> tempFiltered = List.from(_allBookings);
+
+    // 1. Apply Search Query Filter
+    if (_searchQuery.isNotEmpty) {
+      String queryLower = _searchQuery.toLowerCase();
+      tempFiltered = tempFiltered.where((jadwal) {
+        // Check against relevant fields (agenda, room, PIC, division, company)
+        // Added null checks for safety
+        return (jadwal.agenda.toLowerCase().contains(queryLower)) ||
+            (jadwal.ruangan.toLowerCase().contains(queryLower)) ||
+            (jadwal.pic.toLowerCase().contains(queryLower)) ||
+            (jadwal.divisi.toLowerCase().contains(queryLower)) ||
+            (jadwal.perusahaan.toLowerCase().contains(queryLower));
+      }).toList();
+    }
+
+    // 2. Apply Quick Filter Chip Logic (Expandable)
+    if (_selectedFilterChip != null) {
+      // This logic handles the example chips provided
+      switch (_selectedFilterChip) {
+      // Category chips - currently placeholders, don't filter directly
+        case 'Tanggal': break;
+      // Specific filter chips
+        case 'Pending':
+          tempFiltered = tempFiltered.where((j) => j.status == 1).toList();
+          break;
+        case 'Disetujui':
+          tempFiltered = tempFiltered.where((j) => j.status == 2).toList();
+          break;
+        case 'Ditolak':
+          tempFiltered = tempFiltered.where((j) => j.status == 3).toList();
+          break;
+      // Add cases for specific room names matching chip labels
+        case 'Energi Matahari':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Energi Matahari').toList();
+          break;
+        case 'Gas Bumi':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Gas Bumi').toList();
+          break;
+        case 'Konservasi Energi':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Konservasi energi ').toList();
+          break;
+        case 'Biomasa':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Biomasa').toList();
+          break;
+        case 'Energi Angin':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Energi Angin').toList();
+          break;
+        case 'Minyak Bumi':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Minyak Bumi').toList();
+          break;
+      // Add more room cases or other filter logic here...
+      }
+    }
+
+    // Update the state with the final filtered list that the UI will display
+    setState(() {
+      _filteredBookings = tempFiltered;
     });
   }
 
   // --- Show Snackbar Helper ---
   void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return; // Check mount status
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green, // Use red for errors, green for success
-        behavior: SnackBarBehavior.floating, // Make snackbar float above bottom elements
-      ),
-    );
+    if (!mounted) return;
+    // Ensure context is still valid before showing Snackbar
+    if (ScaffoldMessenger.maybeOf(context) != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      print("Snackbar Warning: ScaffoldMessenger context not found. Message: $message");
+    }
   }
 
   // --- Logout Function ---
   Future<void> _logout() async {
-    // Show confirmation dialog before proceeding
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
@@ -95,123 +266,69 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         ],
       ),
     );
-
-    // If user confirmed logout
     if (shouldLogout == true) {
-      await ApiService.logout(); // Call the service to clear the token
+      await ApiService.logout();
       if (mounted) {
-        // Navigate back to the LoginPage and remove all previous routes from the stack
+        // Ensure context is valid before navigation
+        // Use Navigator.pushNamedAndRemoveUntil if using named routes, otherwise this is fine
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-              (route) => false,
-        );
+            MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
       }
     }
   }
 
   // --- Navigate to Add Schedule Page ---
   void _openTambahJadwal() async {
-    // Show the TambahJadwalPage within a Dialog for a modal presentation
     final result = await showDialog(
       context: context,
       builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(16), // Add padding around the dialog
-        // Pass the current user's name to the add page
+        insetPadding: const EdgeInsets.all(16),
         child: TambahJadwalPage(namaPengguna: "${widget.firstName} ${widget.lastName}"),
       ),
     );
-    // If the dialog returns true (indicating a successful save), reload the schedule list
-    if (result == true && mounted) {
-      _loadJadwal();
-    }
+    if (result == true && mounted) _loadJadwalAndInitializeFilter(); // Refresh data after adding
   }
 
   // --- API Call: Update Booking Status ---
   Future<void> _updateBookingStatus(JadwalRapat jadwal, int newStatus) async {
-    if (_isProcessingAction) return; // Prevent concurrent calls
+    if (_isProcessingAction) return;
     if (!mounted) return;
-
-    setState(() => _isProcessingAction = true); // Set flag to disable UI elements
-
-    // Construct the API endpoint URL dynamically using jadwal.id
+    setState(() => _isProcessingAction = true);
     final url = Uri.parse("${ApiService.baseUrl}/ruang-rapat/${jadwal.id}/status");
-    // Prepare the request body as JSON, containing the new status
     final body = jsonEncode({"status": newStatus});
-    // Get headers (which should include the Authorization token from ApiService)
     final headers = ApiService.headers;
-
-    // *** Crucial Check: Ensure Authorization header is present ***
     if (!headers.containsKey('Authorization')) {
-      _showSnackBar("Error: Token otorisasi tidak ditemukan. Silakan login ulang.", isError: true);
-      if (mounted) setState(() => _isProcessingAction = false); // Reset flag
-      return; // Stop execution if no token
+      _showSnackBar("Error: Token otorisasi tidak ditemukan.", isError: true);
+      if (mounted) setState(() => _isProcessingAction = false);
+      return;
     }
-    // Add Content-Type header explicitly if not already present in ApiService.headers
-    headers['Content-Type'] = 'application/json';
-
-
-    print('Updating Status for ID: ${jadwal.id}'); // Debug print
-    print('URL: $url'); // Debug print
-    print('Headers: $headers'); // Debug print (Ensure Authorization is there)
-    print('Body: $body'); // Debug print
-    print('Method: PATCH'); // Logging the method being used
-
+    headers['Content-Type'] = 'application/json'; // Ensure Content-Type
     try {
-      // Make the PATCH request to update the status
-      final response = await http.patch( // <-- Use http.patch
-        url,
-        headers: headers,
-        body: body,
-      ).timeout(const Duration(seconds: 20)); // Set a timeout duration
-
-      if (!mounted) return; // Check mount status again after await
-
-      print('Update Status Response Code: ${response.statusCode}'); // Debug print
-      print('Update Status Response Body: ${response.body}'); // Debug print
-
-
-      // Check response status code for success (200 OK is typical for PATCH updates)
+      final response = await http.patch(url, headers: headers, body: body)
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
       if (response.statusCode == 200) {
-        _showSnackBar("Status untuk '${jadwal.agenda}' berhasil diperbarui.");
-        _loadJadwal(); // Refresh the list to reflect the change
+        _showSnackBar("Status '${jadwal.agenda}' diperbarui.");
+        await _refreshData(); // Refresh data on success using the refresh function
       } else {
-        // Handle API error
-        String errorMessage = "Gagal update status (Code: ${response.statusCode})";
-        try {
-          // Attempt to parse a more specific error message from the response body
-          final errorData = jsonDecode(response.body);
-          errorMessage += ": ${errorData?['message'] ?? response.body}";
-        } catch (_) {
-          // Fallback if the response body is not JSON or lacks a 'message' field
-          errorMessage += ": ${response.body}";
-        }
+        String errorMessage = "Gagal update (Code: ${response.statusCode})";
+        try { errorMessage += ": ${jsonDecode(response.body)['message'] ?? response.body}"; } catch (_) { errorMessage += ": ${response.body}"; }
         _showSnackBar(errorMessage, isError: true);
       }
-    } on TimeoutException {
-      // Handle network timeout
-      if (mounted) _showSnackBar("Koneksi timeout saat update status. Periksa jaringan Anda.", isError: true);
-    } catch (e) {
-      // Handle any other exceptions during the API call
-      if (mounted) _showSnackBar("Terjadi kesalahan saat update status: ${e.toString()}", isError: true);
-    } finally {
-      // IMPORTANT: Always reset the processing flag in the finally block
-      if (mounted) {
-        setState(() => _isProcessingAction = false);
-      }
-    }
+    } on TimeoutException { if (mounted) _showSnackBar("Timeout saat update status.", isError: true); }
+    catch (e) { if (mounted) _showSnackBar("Error saat update status: ${e.toString()}", isError: true); }
+    finally { if (mounted) setState(() => _isProcessingAction = false); }
   }
 
   // --- API Call: Delete Booking ---
   Future<void> _deleteBooking(JadwalRapat jadwal) async {
-    if (_isProcessingAction) return; // Prevent concurrent calls
+    if (_isProcessingAction) return;
     if (!mounted) return;
-
-    // Show confirmation dialog before deleting
     final confirmDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Konfirmasi Hapus"),
-        content: Text("Anda yakin ingin menghapus jadwal '${jadwal.agenda}'? Tindakan ini tidak dapat dibatalkan."),
+        content: Text("Yakin ingin menghapus jadwal '${jadwal.agenda}'?"),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text("Batal")),
           ElevatedButton(
@@ -222,152 +339,90 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         ],
       ),
     );
-
-    // If user cancels, stop the function
     if (confirmDelete != true) return;
-
-    setState(() => _isProcessingAction = true); // Set flag
-
-    // Construct the API URL for the DELETE request
+    setState(() => _isProcessingAction = true);
     final url = Uri.parse("${ApiService.baseUrl}/ruang-rapat/${jadwal.id}");
-    // Get headers (including Authorization token)
     final headers = ApiService.headers;
-
-    // Ensure token exists
     if (!headers.containsKey('Authorization')) {
       _showSnackBar("Error: Token otorisasi tidak ditemukan.", isError: true);
       if (mounted) setState(() => _isProcessingAction = false);
       return;
     }
-
-    print('Deleting Booking ID: ${jadwal.id}'); // Debug print
-    print('URL: $url'); // Debug print
-    print('Headers: $headers'); // Debug print
-
-
     try {
-      // Make the DELETE request
       final response = await http.delete(url, headers: headers)
-          .timeout(const Duration(seconds: 20)); // Set timeout
-
-      if (!mounted) return; // Check mount status after await
-
-      print('Delete Response Code: ${response.statusCode}'); // Debug print
-      print('Delete Response Body: ${response.body}'); // Debug print
-
-
-      // Check for success status codes (200 OK or 204 No Content are common for DELETE)
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
       if (response.statusCode == 200 || response.statusCode == 204) {
-        _showSnackBar("Jadwal '${jadwal.agenda}' berhasil dihapus.");
-        _loadJadwal(); // Refresh the list
+        _showSnackBar("Jadwal '${jadwal.agenda}' dihapus.");
+        await _refreshData(); // Refresh data on success using the refresh function
       } else {
-        // Handle API error
-        String errorMessage = "Gagal menghapus (Code: ${response.statusCode})";
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMessage += ": ${errorData?['message'] ?? response.body}";
-        } catch (_) {
-          errorMessage += ": ${response.body}";
-        }
+        String errorMessage = "Gagal hapus (Code: ${response.statusCode})";
+        try { errorMessage += ": ${jsonDecode(response.body)['message'] ?? response.body}"; } catch (_) { errorMessage += ": ${response.body}"; }
         _showSnackBar(errorMessage, isError: true);
       }
-    } on TimeoutException {
-      // Handle network timeout
-      if (mounted) _showSnackBar("Koneksi timeout saat menghapus.", isError: true);
-    } catch (e) {
-      // Handle any other exceptions
-      if (mounted) _showSnackBar("Terjadi kesalahan saat menghapus: ${e.toString()}", isError: true);
-    } finally {
-      // IMPORTANT: Always reset the processing flag
-      if (mounted) {
-        setState(() => _isProcessingAction = false);
-      }
-    }
+    } on TimeoutException { if (mounted) _showSnackBar("Timeout saat menghapus.", isError: true); }
+    catch (e) { if (mounted) _showSnackBar("Error saat menghapus: ${e.toString()}", isError: true); }
+    finally { if (mounted) setState(() => _isProcessingAction = false); }
   }
 
   // --- Show Confirmation Dialog for Status Change ---
   Future<void> _showConfirmationDialog(JadwalRapat jadwal, String actionType) async {
-    if (_isProcessingAction) return; // Don't show dialog if already processing
+    if (_isProcessingAction) return;
     if (!mounted) return;
-
-    // Determine texts based on action
     String title = actionType == 'approve' ? 'Konfirmasi Setujui' : 'Konfirmasi Tolak';
     String content = actionType == 'approve'
-        ? 'Anda yakin ingin menyetujui jadwal "${jadwal.agenda}"?'
-        : 'Anda yakin ingin menolak jadwal "${jadwal.agenda}"?';
+        ? 'Yakin ingin menyetujui jadwal "${jadwal.agenda}"?'
+        : 'Yakin ingin menolak jadwal "${jadwal.agenda}"?';
     String confirmButtonText = actionType == 'approve' ? 'Setujui' : 'Tolak';
     Color confirmButtonColor = actionType == 'approve' ? Colors.green : Colors.orange;
-
     final bool? confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false, // User must choose an action
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(content),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Batal'),
-              onPressed: () {
-                Navigator.of(context).pop(false); // Return false if cancelled
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: confirmButtonColor),
-              child: Text(confirmButtonText, style: const TextStyle(color: Colors.white)),
-              onPressed: () {
-                Navigator.of(context).pop(true); // Return true if confirmed
-              },
-            ),
-          ],
-        );
-      },
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(title),
+            content: Text(content),
+            actions: <Widget>[
+              TextButton(child: const Text('Batal'), onPressed: () => Navigator.of(context).pop(false)),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: confirmButtonColor),
+                child: Text(confirmButtonText, style: const TextStyle(color: Colors.white)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        }
     );
-
-    // If user confirmed in the dialog
     if (confirmed == true && mounted) {
-      // Determine the new status code based on the action
       int newStatus = (actionType == 'approve') ? 2 : 3;
-      // Call the API function to update the status
       _updateBookingStatus(jadwal, newStatus);
     }
   }
 
   // --- Handle Action Selection from Popup Menu ---
   void _handleAction(String action, JadwalRapat jadwal) {
-    if (_isProcessingAction) {
-      _showSnackBar("Harap tunggu proses sebelumnya selesai.", isError: true);
-      return;
-    }
-    // Show confirmation dialog for approve and reject actions
+    if (_isProcessingAction) { _showSnackBar("Harap tunggu...", isError: true); return; }
     switch (action) {
-      case 'approve':
-      case 'reject':
-        _showConfirmationDialog(jadwal, action); // Call confirmation dialog first
-        break;
-      case 'delete':
-        _deleteBooking(jadwal); // Delete uses its own confirmation dialog
-        break;
+      case 'approve': case 'reject': _showConfirmationDialog(jadwal, action); break;
+      case 'delete': _deleteBooking(jadwal); break;
     }
   }
-
 
   // --- Date Picker Logic (Only for Ruang Rapat tab now) ---
   void _pickDate() async {
     final picked = await showDatePicker(
         context: context,
-        initialDate: _selectedDate, // Start picker at the currently selected date
-        firstDate: DateTime(2020), // Earliest selectable date
-        lastDate: DateTime(2030), // Latest selectable date
+        initialDate: _selectedDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
         builder: (context, child) {
-          // Apply custom theme to the date picker dialog
           final theme = Theme.of(context);
           return Theme(
             data: theme.copyWith(
               colorScheme: theme.colorScheme.copyWith(
                 primary: Colors.green, // Header background color
                 onPrimary: Colors.white, // Header text color
-                onSurface: theme.colorScheme.onSurface, // Date text color in the calendar
+                onSurface: theme.colorScheme.onSurface, // Date text color
               ),
               textButtonTheme: TextButtonThemeData(
                 style: TextButton.styleFrom(
@@ -379,35 +434,30 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           );
         }
     );
-    // If a date was picked and it's different from the current one, update the state
-    // This only affects the "Ruang Rapat" tab's filter now
     if (picked != null && picked != _selectedDate && mounted) {
       setState(() {
         _selectedDate = picked;
+        _applyFilters(); // Re-apply filters for list tab as well
       });
     }
   }
 
-  // Format date for display using Indonesian locale (e.g., "Senin, 27 Oktober 2025")
-  String _formatDate(DateTime date) {
-    return DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date);
-  }
+  // Format date for display
+  String _formatDate(DateTime date) { return DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date); }
 
   // --- Build Method: Constructs the UI ---
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context); // Get current theme data
-    final String fullName = "${widget.firstName} ${widget.lastName}"; // Combine names
-    final isDark = theme.brightness == Brightness.dark; // Check if dark mode is active
+    final theme = Theme.of(context);
+    final String fullName = "${widget.firstName} ${widget.lastName}";
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // Use theme's background color
-      // Configure the AppBar
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        // Title section with logo, title, and welcome message
         title: Row(
           children: [
-            Image.asset("assets/images/logo.png", height: 30), // App logo
+            Image.asset("assets/images/logo.png", height: 30),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,48 +468,43 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             ),
           ],
         ),
-        // Style AppBar based on theme
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-        elevation: 1, // Add a subtle shadow
-        iconTheme: IconThemeData(color: theme.colorScheme.onSurface), // Color for drawer icon
-        actionsIconTheme: IconThemeData(color: theme.colorScheme.onSurface), // Color for action icons
-        // Action buttons on the right
+        elevation: 1,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        actionsIconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         actions: [
           IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: "Refresh Data",
-              // Disable button if an action is processing
-              onPressed: _isProcessingAction ? null : _loadJadwal),
+              onPressed: _isProcessingAction ? null : _refreshData // Use _refreshData
+          ),
           IconButton(
               icon: const Icon(Icons.logout),
               tooltip: "Logout",
-              // Disable button if an action is processing
-              onPressed: _isProcessingAction ? null : _logout),
+              onPressed: _isProcessingAction ? null : _logout
+          ),
         ],
-        // TabBar added below the main AppBar content
-        bottom: TabBar(
-          controller: _tabController, // Link to the TabController
-          labelColor: Colors.green, // Color for the selected tab's text
-          unselectedLabelColor: theme.hintColor, // Color for inactive tabs' text
-          indicatorColor: Colors.green, // Color of the underline indicator
+        bottom: TabBar( // TabBar remains in AppBar
+          controller: _tabController,
+          labelColor: Colors.green,
+          unselectedLabelColor: theme.hintColor,
+          indicatorColor: Colors.green,
           tabs: const [
-            Tab(text: "Ruang Rapat"), // First tab label
-            Tab(text: "List Peminjaman"), // Second tab label (Updated Name)
+            Tab(text: "Ruang Rapat"),
+            Tab(text: "List Peminjaman"),
           ],
         ),
       ),
-      // TabBarView holds the content for each tab
       body: TabBarView(
-        controller: _tabController, // Link to the TabController
+        controller: _tabController,
         children: [
-          _buildRuangRapatTab(theme), // Widget builder for the first tab
-          _buildListPeminjamanTabNew(theme), // Widget builder for the second tab (the new list view)
+          _buildRuangRapatTab(theme), // Tab 1: Visual Schedule
+          _buildListPeminjamanTabNewStyle(theme), // Tab 2: New Style List with Search/Filter
         ],
       ),
-      // Floating Action Button for adding new schedules
       floatingActionButton: FloatingActionButton(
-        onPressed: _isProcessingAction ? null : _openTambahJadwal, // Disable if processing
-        backgroundColor: _isProcessingAction ? Colors.grey : Colors.green, // Visual feedback when disabled
+        onPressed: _isProcessingAction ? null : _openTambahJadwal,
+        backgroundColor: _isProcessingAction ? Colors.grey : Colors.green,
         child: const Icon(Icons.add, color: Colors.white),
         tooltip: 'Tambah Jadwal Baru',
       ),
@@ -470,49 +515,52 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   // (Shows visual schedule table for APPROVED bookings on _selectedDate)
   Widget _buildRuangRapatTab(ThemeData theme) {
     return Container(
-      color: theme.scaffoldBackgroundColor, // Use theme background color
+      color: theme.scaffoldBackgroundColor,
       child: Column(
         children: [
-          // Date selector widget specific to this tab
-          _buildDateSelector(theme),
-          // Expanded FutureBuilder to display the schedule table
+          _buildDateSelector(theme), // Date selector specific to this tab
           Expanded(
             child: FutureBuilder<List<JadwalRapat>>(
-              future: _futureJadwal,
+              future: _futureJadwal, // Uses the shared future
               builder: (context, snapshot) {
-                // Show loading indicator
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                // Handle Loading state based on _allBookings being empty
+                if (snapshot.connectionState == ConnectionState.waiting && _allBookings.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                // Show error message with retry button
-                if (snapshot.hasError) {
+                // Handle Error state ONLY if _allBookings is still empty
+                if (snapshot.hasError && _allBookings.isEmpty) {
+                  return Center( child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column( mainAxisAlignment: MainAxisAlignment.center, children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 40),
+                      const SizedBox(height: 10),
+                      Text("Gagal memuat jadwal visual: ${snapshot.error.toString().replaceFirst('Exception: ', '')}", textAlign: TextAlign.center),
+                      const SizedBox(height: 10),
+                      ElevatedButton(onPressed: _loadJadwalAndInitializeFilter, child: const Text("Coba Lagi")) // Use initial load
+                    ],),
+                  ),);
+                }
+                // Filter data: Only show APPROVED schedules (status 2) for the selected date
+                // Use _allBookings as the source, filtered locally
+                final displayedJadwal = _allBookings.where((jadwal) =>
+                jadwal.status == 2 && DateUtils.isSameDay(jadwal.tanggal, _selectedDate)
+                ).toList();
+
+                // Handle no schedule for this specific date after loading completes
+                if (displayedJadwal.isEmpty && snapshot.connectionState == ConnectionState.done ) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column( // Display error and retry button
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 40),
-                          const SizedBox(height: 10),
-                          Text("Gagal memuat jadwal visual: ${snapshot.error}", textAlign: TextAlign.center),
-                          const SizedBox(height: 10),
-                          ElevatedButton(onPressed: _loadJadwal, child: const Text("Coba Lagi"))
-                        ],
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        "Tidak ada jadwal rapat yang disetujui untuk\n${_formatDate(_selectedDate)}.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Theme.of(context).hintColor),
                       ),
                     ),
                   );
                 }
-                // Process and display data if loaded successfully
-                final allJadwal = snapshot.data ?? [];
 
-                // Filter data: Only show APPROVED schedules (status 2) for the selected date
-                final displayedJadwal = allJadwal.where((jadwal) {
-                  // Check if status is 2 and the date matches _selectedDate (ignoring time)
-                  return jadwal.status == 2 && DateUtils.isSameDay(jadwal.tanggal, _selectedDate);
-                }).toList();
-
-                // Use the JadwalTable widget (imported from DigiAm folder)
-                return JadwalTable(jadwalList: displayedJadwal);
+                return JadwalTable(jadwalList: displayedJadwal); // Display visual table
               },
             ),
           ),
@@ -525,53 +573,46 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   Widget _buildDateSelector(ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
     return Container(
-      // Background color matches AppBar for consistency
       color: isDark ? Colors.grey[900] : Colors.white,
-      padding: const EdgeInsets.all(16), // Padding around the selectors
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Row for Prev/Today/Next buttons
-          Row(
+          Row( // Prev/Today/Next Buttons
             children: [
               Expanded(child: _dateButton("< Prev", () {
-                // Go to previous day, update state
-                if (mounted) setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
+                if (mounted) setState(() {
+                  _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+                  _applyFilters(); // Re-apply filters for list tab
+                });
               })),
-              const SizedBox(width: 10), // Spacing between buttons
+              const SizedBox(width: 10),
               Expanded(child: _dateButton("Today", () {
-                // Go to today's date, update state
-                if (mounted) setState(() => _selectedDate = DateTime.now());
+                if (mounted) setState(() {
+                  _selectedDate = DateTime.now();
+                  _applyFilters(); // Re-apply filters for list tab
+                });
               })),
               const SizedBox(width: 10),
               Expanded(child: _dateButton("Next >", () {
-                // Go to next day, update state
-                if (mounted) setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
+                if (mounted) setState(() {
+                  _selectedDate = _selectedDate.add(const Duration(days: 1));
+                  _applyFilters(); // Re-apply filters for list tab
+                });
               })),
             ],
           ),
-          const SizedBox(height: 16), // Space between buttons and date field
-          // TextFormField acting as a button to open the date picker
-          TextFormField(
-            readOnly: true, // Not directly editable
-            onTap: _pickDate, // Call date picker function on tap
-            // Controller displays the formatted selected date
-            controller: TextEditingController(text: _formatDate(_selectedDate)),
-            // Styling for the date field
+          const SizedBox(height: 16),
+          TextFormField( // Date display/picker field
+            readOnly: true,
+            onTap: _pickDate, // Opens date picker, which handles state update
+            controller: TextEditingController(text: _formatDate(_selectedDate)), // Shows formatted date
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              suffixIcon: Icon(Icons.calendar_today, color: theme.hintColor), // Calendar icon
-              // Border styling based on theme
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-              ),
+              suffixIcon: Icon(Icons.calendar_today, color: theme.hintColor),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5)),
             ),
-            // Text color matches theme
             style: TextStyle(color: theme.colorScheme.onSurface),
           ),
         ],
@@ -581,7 +622,6 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
 
   // --- Helper for Date Navigation Buttons ---
   ElevatedButton _dateButton(String label, VoidCallback onPressed) {
-    // Standard green button for date navigation
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -594,93 +634,231 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // --- Widget Builder for "List Peminjaman" Tab Content (Vertical List Style) ---
-  Widget _buildListPeminjamanTabNew(ThemeData theme) {
+
+  // --- Widget Builder for "List Peminjaman" Tab (New Style with Search/Filter Bar) ---
+  Widget _buildListPeminjamanTabNewStyle(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       color: theme.scaffoldBackgroundColor, // Use theme background
-      child: FutureBuilder<List<JadwalRapat>>(
-        future: _futureJadwal, // Fetch all schedules
-        builder: (context, snapshot) {
-          // Loading State
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          // Error State
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+      child: Column( // Use Column to stack Search/Filter Bar and List
+        children: [
+          // --- Search and Filter Bar ---
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12), // Adjusted padding
+            color: isDark ? Colors.grey[850] : Colors.white, // Background for the filter area
+            child: Column(
+              children: [
+                // --- Search Bar Row ---
+                Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                    const SizedBox(height: 10),
-                    Text("Gagal memuat list: ${snapshot.error}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-                    const SizedBox(height: 10),
-                    ElevatedButton(onPressed: _loadJadwal, child: const Text("Coba Lagi"))
+                    // Search Field
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Cari agenda, PIC, ruangan...',
+                          hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
+                          prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
+                          isDense: true,
+                          filled: true,
+                          fillColor: isDark? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20.0), // Rounded border
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                          // Clear button ('x')
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                            icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () { _searchController.clear(); }, // Clears text and triggers listener
+                          )
+                              : null,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Filter Icon Button
+                    InkWell( // Use InkWell for better tap area & ripple
+                      onTap: () {
+                        // TODO: Implement advanced filter dialog/bottom sheet
+                        _showSnackBar("Fitur filter lanjutan belum diimplementasikan.");
+                        // Example: Show a bottom sheet
+                        // showModalBottomSheet(context: context, builder: (_) => _buildFilterBottomSheet());
+                      },
+                      borderRadius: BorderRadius.circular(20), // Match icon button shape
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0), // Padding inside tap area
+                        child: Icon(
+                          Icons.filter_list,
+                          color: theme.colorScheme.primary, // Use primary color
+                          size: 24,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            );
-          }
-          // No Data State
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Tidak ada data peminjaman."));
-          }
+                const SizedBox(height: 10), // Space before quick filter chips
 
-          // Data Loaded Successfully
-          final allJadwal = snapshot.data!;
-
-          // Sort by date descending (newest first), then by start time ascending
-          allJadwal.sort((a, b) {
-            int dateComparison = b.tanggal.compareTo(a.tanggal); // Newest date first
-            if (dateComparison != 0) {
-              return dateComparison;
-            } else {
-              // If dates are the same, sort by start time ascending
-              try {
-                final timeA = int.parse(a.jamMulai.replaceAll(':', ''));
-                final timeB = int.parse(b.jamMulai.replaceAll(':', ''));
-                return timeA.compareTo(timeB);
-              } catch (e) {
-                print("Error sorting times during secondary sort: $e");
-                return 0;
-              }
-            }
-          });
-
-
-          // Build the list using RefreshIndicator and ListView.separated
-          return RefreshIndicator(
-            onRefresh: () async => _loadJadwal(), // Enable pull-to-refresh
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8.0), // Padding above/below list
-              itemCount: allJadwal.length, // Total number of items
-              itemBuilder: (context, index) {
-                final jadwal = allJadwal[index];
-                // Use the list item builder for each booking
-                return _buildBookingListItem(jadwal, theme);
-              },
-              // Add dividers between list items
-              separatorBuilder: (context, index) => Divider(
-                height: 1, // Minimal height for the divider line
-                thickness: 0.5, // Make the line thin
-                color: theme.dividerColor.withOpacity(0.3), // Subtle divider color
-                indent: 16, // Indent from the left edge
-                endIndent: 16, // Indent from the right edge
-              ),
+                // --- Quick Filter Chips ---
+                SizedBox(
+                  height: 32, // Constrained height for the chip row
+                  child: ListView( // Horizontal scrollable list for chips
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildFilterChip(label: 'Pending', value: 'Pending', theme: theme),
+                      _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
+                      _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
+                      _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
+                      _buildFilterChip(label: 'Gas Bumi', value: 'Gas Bumi', theme: theme),
+                      _buildFilterChip(label: 'Konservasi Energi', value: 'Konservasi Energi', theme: theme),
+                      _buildFilterChip(label: 'Biomasa', value: 'Biomasa', theme: theme),
+                      _buildFilterChip(label: 'Energi Angin', value: 'Energi Angin', theme: theme),
+                      _buildFilterChip(label: 'Minyak Bumi', value: 'Minyak Bumi', theme: theme),// Example room
+                      // Add more chips dynamically based on available rooms/statuses if needed
+                    ],
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+          Divider(height: 1, thickness: 1, color: theme.dividerColor.withOpacity(0.1)), // Subtle divider
+
+          // --- Filtered List Display ---
+          Expanded(
+            child: FutureBuilder<List<JadwalRapat>>(
+              // FutureBuilder handles initial load state and errors based on _futureJadwal
+              future: _futureJadwal,
+              builder: (context, snapshot) {
+                // Initial Loading State
+                if (snapshot.connectionState == ConnectionState.waiting && _allBookings.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                // Initial Error State
+                if (snapshot.hasError && _allBookings.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column( // Error display with retry button
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                          const SizedBox(height: 10),
+                          Text("Gagal memuat list peminjaman: ${snapshot.error.toString().replaceFirst('Exception: ', '')}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                          const SizedBox(height: 10),
+                          ElevatedButton(onPressed: _loadJadwalAndInitializeFilter, child: const Text("Coba Lagi")) // Use initial load here
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                // --- Display List based on _filteredBookings state ---
+
+                // No Results State (after filtering or if initial list is empty)
+                // Use _filteredBookings here as it reflects the current filtered state AFTER initial load
+                if (_filteredBookings.isEmpty) {
+                  return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(
+                          _searchQuery.isNotEmpty || _selectedFilterChip != null
+                              ? "Tidak ada jadwal yang cocok." // Message when filters/search active
+                              : "Tidak ada data peminjaman.", // Message when list is truly empty after load
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: theme.hintColor, fontSize: 16),
+                        ),
+                      )
+                  );
+                }
+
+                // Display the Filtered List
+                return RefreshIndicator(
+                  onRefresh: _refreshData, // Use _refreshData for pull-to-refresh
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0), // Padding for the list
+                    itemCount: _filteredBookings.length, // Use the filtered list length
+                    itemBuilder: (context, index) {
+                      final jadwal = _filteredBookings[index]; // Get item from filtered list
+                      // Build the list item widget
+                      return _buildBookingListItem(jadwal, theme);
+                    },
+                    // Divider between items
+                    separatorBuilder: (context, index) => Divider(
+                      height: 1, thickness: 0.5, color: theme.dividerColor.withOpacity(0.3),
+                      indent: 16, endIndent: 16,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // --- Widget Builder for each item in the "List Peminjaman" tab (Vertical List Style) ---
+  // --- Helper for Building Filter Chips ---
+  Widget _buildFilterChip({required String label, required String value, required ThemeData theme}) {
+    final bool isSelected = _selectedFilterChip == value; // Check if this chip is the active filter
+    return Padding(
+      padding: const EdgeInsets.only(right: 6.0), // Space between chips
+      child: FilterChip(
+        label: Text(label),
+        labelStyle: TextStyle(
+          fontSize: 12, // Slightly smaller font for chips
+          color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface.withOpacity(0.8),
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal, // Bold when selected
+        ),
+        selected: isSelected, // Set the visual selected state
+        onSelected: (bool selected) {
+          // Handle chip selection/deselection logic
+          setState(() {
+            if (selected) {
+              _selectedFilterChip = value; // Set this chip as the active filter
+              // --- Placeholder Logic for complex filters ---
+            if (value == 'Ruangan') {
+                // TODO: Open room selection dialog/bottomsheet
+                _showSnackBar("Filter Ruangan belum diimplementasikan.", isError: true);
+                _selectedFilterChip = null; // Reset selection
+              } else if (value == 'Status') {
+                // TODO: Open status selection dialog/bottomsheet
+                _showSnackBar("Filter Status belum diimplementasikan.", isError: true);
+                _selectedFilterChip = null; // Reset selection
+              }
+              // For specific value chips (like 'Pending', 'Biomasa'),
+              // the _selectedFilterChip state itself drives the filter in _applyFilters.
+            } else {
+              // If a chip is deselected, clear the active filter chip
+              _selectedFilterChip = null;
+              // Optionally reset specific filter variables if needed
+              // _selectedFilterDate = null;
+              // _selectedFilterStatus = null;
+              // _selectedFilterRoomName = null;
+            }
+            _applyFilters(); // Re-apply filters based on the new state
+          });
+        },
+        selectedColor: theme.colorScheme.primary.withOpacity(0.8), // Color when the chip is selected
+        checkmarkColor: theme.colorScheme.onPrimary, // Color of the checkmark (if shown)
+        backgroundColor: theme.chipTheme.backgroundColor ?? theme.cardColor, // Background when not selected
+        side: isSelected ? BorderSide.none : BorderSide(color: theme.dividerColor.withOpacity(0.5)), // Border when not selected
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)), // More rounded shape for chips
+        visualDensity: const VisualDensity(horizontal: 0.0, vertical: -2), // Make chip vertically smaller
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0), // Adjust Internal padding
+      ),
+    );
+  }
+
+
+  // --- Widget Builder for each item in the "List Peminjaman" tab ---
   Widget _buildBookingListItem(JadwalRapat jadwal, ThemeData theme) {
     Color statusColor;
     String statusText;
-    // Determine status text and color
+    // Determine status text and color based on jadwal.status
     switch (jadwal.status) {
       case 1: statusColor = Colors.orange; statusText = 'PENDING'; break;
       case 2: statusColor = Colors.green; statusText = 'DISETUJUI'; break;
@@ -692,27 +870,27 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     final durationString = _calculateDuration(jadwal.jamMulai, jadwal.jamSelesai);
     final bool isDark = theme.brightness == Brightness.dark; // Check theme brightness
 
-    // Use InkWell for potential future tap interactions on the whole row
+    // Use InkWell for tap feedback, though no action is currently assigned
     return InkWell(
       // onTap: () { /* Optional: Navigate to detail view or trigger edit? */ },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Padding for each list item
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Align items to the top
+          crossAxisAlignment: CrossAxisAlignment.start, // Align content to the top
           children: [
-            // Left side: Booking Details (takes most space)
+            // Left Column: Details
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // Align text to the left
+                crossAxisAlignment: CrossAxisAlignment.start, // Align text left
                 children: [
-                  // Agenda (Title) and Participant Count
+                  // Agenda and Participant Count
                   Text(
                     "${jadwal.agenda} (${jadwal.jumlahPeserta} Org)",
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
-                    maxLines: 2, // Allow up to 2 lines for agenda
-                    overflow: TextOverflow.ellipsis, // Add '...' if longer
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6), // Space below agenda
+                  const SizedBox(height: 6),
                   // Status Badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -725,19 +903,18 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                     ),
                     child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),),
                   ),
-                  const SizedBox(height: 8), // Space below status
-                  // Additional Details (like the reference image)
-                  _buildDetailRowList(null, // No icon shown in reference image for this line
-                      "Tanggal Peminjaman : ${DateFormat('dd-MM-yyyy - HH:mm', 'id_ID').format(jadwal.tanggal)}", theme), // Combined Date and Submission Time?
-                  _buildDetailRowList(null, // No icon
-                      "Waktu : $timeRange ($durationString)", theme), // Include calculated duration
-                  _buildDetailRowList(null, // No icon
-                      "Keterangan : ${jadwal.ruangan}", theme), // Show Room name as Keterangan
-                  _buildDetailRowList(null, // No icon
-                      "PIC : ${jadwal.pic}", theme), // Show PIC
-                  _buildDetailRowList(null, // No icon
-                      jadwal.divisi, theme), // Show Division
-
+                  const SizedBox(height: 8),
+                  // Other Details using helper function
+                  _buildDetailRowList(null, // No icon version
+                      "Tanggal Peminjaman : ${DateFormat('dd-MM-yyyy - HH:mm', 'id_ID').format(jadwal.tanggal)}", theme),
+                  _buildDetailRowList(null,
+                      "Waktu : $timeRange ($durationString)", theme),
+                  _buildDetailRowList(null,
+                      "Keterangan : ${jadwal.ruangan}", theme), // Room shown as Keterangan
+                  _buildDetailRowList(null,
+                      "PIC : ${jadwal.pic}", theme),
+                  _buildDetailRowList(null,
+                      jadwal.divisi, theme), // Division
                 ],
               ),
             ),
@@ -750,23 +927,25 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               // Logic to show/hide menu items based on status
               itemBuilder: (BuildContext context) {
                 List<PopupMenuEntry<String>> items = [];
-
-                // Show 'Setujui' only if status is NOT 'Disetujui' (i.e., Pending or Ditolak)
-                if (jadwal.status != 2) {
+                // Show 'Setujui' only if status allows approval (e.g., Pending or maybe Ditolak)
+                if (jadwal.status != 2) { // Show if NOT already Approved
                   items.add(_buildPopupMenuItem('approve', Icons.check_circle_outline, 'Setujui', Colors.green));
                 }
-                // Show 'Tolak' only if status is NOT 'Ditolak' (i.e., Pending or Disetujui)
-                if (jadwal.status != 3) {
+                // Show 'Tolak' only if status allows rejection (e.g., Pending or maybe Disetujui)
+                if (jadwal.status != 3) { // Show if NOT already Rejected
                   items.add(_buildPopupMenuItem('reject', Icons.cancel_outlined, 'Tolak', Colors.orange));
                 }
-                // Add divider if both status change options and delete option will be present
-                if (items.isNotEmpty) {
+                // Add divider if there were status change options AND delete will be added
+                // Corrected logic: Add divider only if both approve/reject options would be shown
+                if (jadwal.status != 2 && jadwal.status != 3) {
+                  items.add(const PopupMenuDivider());
+                } else if (items.isNotEmpty) { // Add divider if at least one status option is shown before delete
                   items.add(const PopupMenuDivider());
                 }
-                // Always show 'Hapus'
-                items.add(_buildPopupMenuItem('delete', Icons.delete_outline, 'Hapus', Colors.red));
 
-                return items; // Return the constructed list of menu items
+                // Always show 'Hapus' (or add conditions if needed)
+                items.add(_buildPopupMenuItem('delete', Icons.delete_outline, 'Hapus', Colors.red));
+                return items;
               },
             ),
           ],
@@ -775,40 +954,28 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // Helper to calculate duration string (e.g., "2 jam", "30 mnt", "1 jam 15 mnt")
+
+  // Helper to calculate duration string
   String _calculateDuration(String startTime, String endTime) {
     try {
-      // Assuming format is HH:mm:ss, parse them relative to a common date
-      final start = DateFormat("HH:mm:ss").parse(startTime);
-      final end = DateFormat("HH:mm:ss").parse(endTime);
-      // Calculate the difference
+      // Ensure parsing handles potential variations if needed, otherwise stick to HH:mm:ss
+      final start = DateFormat("HH:mm:ss").parseStrict(startTime);
+      final end = DateFormat("HH:mm:ss").parseStrict(endTime);
       final duration = end.difference(start);
-
-      // Handle cases where end time might be on the next day (or invalid negative duration)
-      if (duration.isNegative) return "Durasi tidak valid"; // More descriptive error
-
-      final hours = duration.inHours; // Get total hours
-      final minutes = duration.inMinutes % 60; // Get remaining minutes
-
-      // Build the duration string
+      if (duration.isNegative) return "Invalid"; // Return specific text for invalid duration
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes % 60;
       List<String> parts = [];
-      if (hours > 0) {
-        parts.add("$hours jam"); // Add hours part if > 0
-      }
-      if (minutes > 0) {
-        parts.add("$minutes mnt"); // Add minutes part if > 0
-      }
-      // If duration is exactly 0 or less than a minute, show "0 mnt"
-      return parts.isEmpty ? "0 mnt" : parts.join(" "); // Join with space if both parts exist
+      if (hours > 0) parts.add("$hours jam");
+      if (minutes > 0) parts.add("$minutes mnt");
+      return parts.isEmpty ? "0 mnt" : parts.join(" ");
     } catch (e) {
-      // Log error if time parsing fails
       print("Error calculating duration ($startTime - $endTime): $e");
-      return "-"; // Return placeholder on error
+      return "-"; // Placeholder on error
     }
   }
 
-
-  // --- Helper for Building Detail Rows in the List Item --- (No Icon version, adjusted style)
+  // --- Helper for Building Detail Rows in List Item (No Icon) ---
   Widget _buildDetailRowList(IconData? icon, String text, ThemeData theme) {
     // Icon parameter is kept for potential future use, but not displayed now
     return Padding(
@@ -817,9 +984,8 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         text,
         // Style adjusted to look similar to the reference image
         style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor, fontSize: 13),
-        // Allow text wrapping
-        // overflow: TextOverflow.ellipsis, // Remove ellipsis to allow wrapping
-        // maxLines: 2, // Allow up to 2 lines if needed
+        // overflow: TextOverflow.ellipsis, // Consider removing ellipsis if wrapping is okay
+        // maxLines: 2, // Allow wrapping up to 2 lines if needed
       ),
     );
   }
@@ -862,6 +1028,5 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       return "$startTime - $endTime";
     }
   }
-
 
 } // End of _AdminPageState class
