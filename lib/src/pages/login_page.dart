@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import 'admin/admin_page.dart'; // <-- Import the new AdminPage
+import 'admin/DigiAm/dashboard_admin.dart';
+import 'admin/DigiAm/admin_page.dart'; // <-- Import the new AdminPage
 import '../../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -42,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => AdminPage(
+              builder: (context) => AdminDashboardPage(
                 firstName: firstName,
                 lastName: lastName,
               ),

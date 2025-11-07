@@ -6,7 +6,6 @@ import '../../../services/jadwal_api_service.dart';
 import '../../../src/models/jadwal_model.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-
 class DigiAmHomePage extends StatefulWidget {
   final String firstName;
   final String lastName;
@@ -26,23 +25,110 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   DateTime selectedDate = DateTime.now();
   late Future<List<JadwalRapat>> _futureJadwal;
 
+  // --- TAMBAHAN UNTUK SEARCH ---
+  List<JadwalRapat> _allBookings = []; // Menyimpan semua data dari API
+  List<JadwalRapat> _filteredBookings = []; // Data yang sudah difilter (oleh user & search)
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  // --- AKHIR TAMBAHAN ---
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _futureJadwal = JadwalApiService.getAllJadwal();
-    initializeDateFormatting('id_ID', null);
+    initializeDateFormatting('id_ID', null).then((_) {
+      if (mounted) {
+        _loadJadwalAndInitializeFilter(); // Memuat data dan menerapkan filter awal
+      }
+    });
+    // Tambahkan listener untuk search controller
+    _searchController.addListener(_onSearchChanged);
   }
 
-  void _reloadData() {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.removeListener(_onSearchChanged); // Hapus listener
+    _searchController.dispose(); // Hapus controller
+    super.dispose();
+  }
+
+  // --- FUNGSI BARU: Memuat data dan filter ---
+  void _loadJadwalAndInitializeFilter() {
+    if (!mounted) return;
     setState(() {
-      _futureJadwal = JadwalApiService.getAllJadwal();
+      _futureJadwal = JadwalApiService.getAllJadwal().then((bookings) {
+        if (mounted) {
+          _allBookings = bookings; // Simpan data lengkap
+          _applyFilters(); // Terapkan filter (awal)
+        }
+        return bookings; // Kembalikan untuk FutureBuilder
+      }).catchError((error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Gagal memuat data: ${error.toString()}"),
+            backgroundColor: Colors.red,
+          ));
+        }
+        throw error; // Biarkan FutureBuilder menangani error
+      });
     });
   }
+
+  // --- MODIFIKASI: _reloadData ---
+  void _reloadData() {
+    // Muat ulang data dan filter
+    _loadJadwalAndInitializeFilter();
+  }
+
+  // --- FUNGSI BARU: Listener perubahan search ---
+  void _onSearchChanged() {
+    if (_searchQuery != _searchController.text) {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text;
+          _applyFilters(); // Terapkan filter setiap kali teks berubah
+        });
+      }
+    }
+  }
+
+  // --- FUNGSI BARU: Menerapkan filter (user & search) ---
+  void _applyFilters() {
+    if (!mounted) return;
+
+    final String currentUser = "${widget.firstName} ${widget.lastName}";
+
+    // 1. Filter berdasarkan PIC (user saat ini)
+    List<JadwalRapat> tempFiltered = _allBookings
+        .where((jadwal) => jadwal.pic == currentUser)
+        .toList();
+
+    // 2. Filter berdasarkan search query
+    if (_searchQuery.isNotEmpty) {
+      String queryLower = _searchQuery.toLowerCase();
+      tempFiltered = tempFiltered.where((jadwal) {
+        // Cari di agenda, ruangan, divisi, atau perusahaan
+        return (jadwal.agenda.toLowerCase().contains(queryLower)) ||
+            (jadwal.ruangan.toLowerCase().contains(queryLower)) ||
+            (jadwal.divisi.toLowerCase().contains(queryLower)) ||
+            (jadwal.perusahaan.toLowerCase().contains(queryLower));
+      }).toList();
+    }
+
+    // 3. Urutkan (misalnya, terbaru dulu)
+    tempFiltered.sort((a, b) => b.tanggal.compareTo(a.tanggal));
+
+    setState(() {
+      _filteredBookings = tempFiltered;
+    });
+  }
+
 
   void _onDateChanged(DateTime newDate) {
     setState(() {
       selectedDate = newDate;
+      // Note: Filter di _buildRuangRapatTab akan otomatis terupdate
     });
   }
 
@@ -52,15 +138,13 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      // --- PENYESUAIAN TEMA ---
-      // Builder untuk menyesuaikan tema DatePicker
       builder: (context, child) {
         final theme = Theme.of(context);
         return Theme(
           data: theme.copyWith(
             colorScheme: theme.colorScheme.copyWith(
-              primary: Colors.green, // Header background
-              onPrimary: Colors.white, // Header text
+              primary: Colors.green,
+              onPrimary: Colors.white,
             ),
           ),
           child: child!,
@@ -88,7 +172,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
         controller: _tabController,
         children: [
           _buildRuangRapatTab(),
-          _buildListPeminjamanTab(),
+          _buildListPeminjamanTab(), // Tab ini sekarang punya search
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -100,8 +184,8 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   AppBar _buildAppBar(BuildContext context) {
+    // ... (Fungsi _buildAppBar tidak berubah)
     final fullName = "${widget.firstName} ${widget.lastName}";
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -119,7 +203,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
           ),
         ],
       ),
-      // --- PENYESUAIAN TEMA ---
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
       elevation: 1,
       leading: IconButton(
@@ -143,6 +226,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Drawer _buildDrawer() {
+    // ... (Fungsi _buildDrawer tidak berubah)
     final fullName = "${widget.firstName} ${widget.lastName}";
     return Drawer(
       child: ListView(
@@ -165,8 +249,9 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildRuangRapatTab() {
+    // ... (Fungsi _buildRuangRapatTab tidak berubah)
+    //     (Dia sudah menggunakan _futureJadwal dan `selectedDate`)
     return Container(
-      // --- PENYESUAIAN TEMA ---
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
         children: [
@@ -187,6 +272,16 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                   return jadwal.status == 2 && DateUtils.isSameDay(jadwal.tanggal, selectedDate);
                 }).toList();
 
+                if (jadwalTampil.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "Tidak ada jadwal disetujui untuk tanggal ini.",
+                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+
                 return JadwalTable(jadwalList: jadwalTampil);
               },
             ),
@@ -197,7 +292,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildDateSelector() {
-    // --- PENYESUAIAN TEMA ---
+    // ... (Fungsi _buildDateSelector tidak berubah)
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: isDark ? Colors.grey[900] : Colors.white,
@@ -230,6 +325,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   void _openTambahJadwal() async {
+    // ... (Fungsi _openTambahJadwal tidak berubah)
     final result = await showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -243,7 +339,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   ListTile _drawerItem(IconData icon, String title, {bool isSelected = false}) {
-    // --- PENYESUAIAN TEMA ---
+    // ... (Fungsi _drawerItem tidak berubah)
     final theme = Theme.of(context);
     final color = isSelected ? Colors.green : theme.colorScheme.onSurface;
 
@@ -256,6 +352,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   ElevatedButton _dateButton(String label, VoidCallback onPressed) {
+    // ... (Fungsi _dateButton tidak berubah)
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -268,52 +365,105 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     );
   }
 
+  // --- MODIFIKASI BESAR: _buildListPeminjamanTab ---
   Widget _buildListPeminjamanTab() {
-    final String currentUser = "${widget.firstName} ${widget.lastName}";
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return FutureBuilder<List<JadwalRapat>>(
-        future: _futureJadwal,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(child: Text("Gagal memuat data peminjaman."));
-          }
-
-          final semuaJadwal = snapshot.data!;
-          final jadwalMilikUser = semuaJadwal.where((jadwal) => jadwal.pic == currentUser).toList();
-
-          if (jadwalMilikUser.isEmpty) {
-            return const Center(child: Text("Anda belum memiliki riwayat peminjaman."));
-          }
-
-          return Container(
-            // --- PENYESUAIAN TEMA ---
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: jadwalMilikUser.length,
-              itemBuilder: (context, index) {
-                final jadwal = jadwalMilikUser[index];
-                return _meetingCard(jadwal);
-              },
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          // --- Search Bar (diambil dari admin_page) ---
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            color: isDark ? Colors.grey[850] : Colors.white,
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Cari agenda, ruangan, divisi...',
+                hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
+                prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
+                isDense: true,
+                filled: true,
+                fillColor: isDark ? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                  icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () { _searchController.clear(); },
+                )
+                    : null,
+              ),
             ),
-          );
-        }
+          ),
+          Divider(height: 1, thickness: 1, color: theme.dividerColor.withOpacity(0.1)),
+
+          // --- List Peminjaman (Sekarang menggunakan _filteredBookings) ---
+          Expanded(
+            child: FutureBuilder<List<JadwalRapat>>(
+                future: _futureJadwal, // Tetap gunakan future untuk loading/error
+                builder: (context, snapshot) {
+                  // Tampilkan loading HANYA saat data awal sedang dimuat
+                  if (snapshot.connectionState == ConnectionState.waiting && _allBookings.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Tampilkan error HANYA jika data awal gagal dimuat
+                  if (snapshot.hasError && _allBookings.isEmpty) {
+                    return Center(child: Text("Gagal memuat data peminjaman: ${snapshot.error}"));
+                  }
+
+                  // Jika data sudah ada (dari snapshot atau state), cek list yg sudah difilter
+                  if (_filteredBookings.isEmpty) {
+                    return Center(
+                      child: Text(
+                        _searchQuery.isNotEmpty
+                            ? "Tidak ada jadwal yang cocok."
+                            : "Anda belum memiliki riwayat peminjaman.",
+                        style: TextStyle(color: theme.hintColor, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  // Tampilkan list berdasarkan _filteredBookings
+                  return RefreshIndicator(
+                    onRefresh: () async => _reloadData(),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _filteredBookings.length, // Gunakan list yg sudah difilter
+                      itemBuilder: (context, index) {
+                        final jadwal = _filteredBookings[index]; // Gunakan list yg sudah difilter
+                        return _meetingCard(jadwal);
+                      },
+                    ),
+                  );
+                }
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+
   Widget _meetingCard(JadwalRapat jadwal) {
+    // ... (Fungsi _meetingCard tidak berubah)
     final time = "${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}";
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      // Card color diatur oleh tema utama, jadi tidak perlu diubah
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
