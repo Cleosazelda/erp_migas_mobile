@@ -175,13 +175,38 @@ class JadwalApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(response.body);
         if (body.containsKey('data') && body['data'] is List) {
-          final List<Map<String, dynamic>> semuaRuangan = List<Map<String, dynamic>>.from(body['data']);
-          // Filter ruangan berdasarkan detail == "2" (sebagai String) ATAU detail == 2 (sebagai int)
-          final ruanganTersaring = semuaRuangan.where((ruangan) {
-            final detail = ruangan['detail'];
-            return detail == "2" || detail == 2; // Cek String dan Integer
-          }).toList();
-          return ruanganTersaring;
+          final List<Map<String, dynamic>> semuaRuangan =
+          List<Map<String, dynamic>>.from(body['data']);
+
+          bool _isMeetingRoomDetail(dynamic detail) {
+            return detail == 2 || detail == '2' || detail == 4 || detail == '4';
+          }
+
+          final Map<String, Map<String, dynamic>> meetingRoomsById = {};
+
+          for (final ruangan in semuaRuangan) {
+            if (!_isMeetingRoomDetail(ruangan['detail'])) continue;
+
+            final dynamic id = ruangan['id'] ??
+                ruangan['ruangan_id'] ??
+                ruangan['kode'] ??
+                ruangan['ruangan'];
+            final String? key = id?.toString();
+
+            if (key != null) {
+              meetingRoomsById[key] = ruangan;
+            }
+          }
+
+          final List<Map<String, dynamic>> meetingRooms =
+          meetingRoomsById.values.toList();
+
+          if (meetingRooms.isNotEmpty) {
+            return meetingRooms;
+          }
+
+          return semuaRuangan;
+
         } else {
           throw Exception("Format respons daftar ruangan tidak valid (key 'data' tidak ditemukan/bukan list)");
         }

@@ -77,6 +77,26 @@ class ApiService {
 
   /// 1. Cek ruang rapat yang tersedia saat ini
   static Future<List<String>> getAvailableRooms() async {
+    bool _isMeetingRoomDetail(dynamic detail) {
+      return detail == 2 || detail == '2' || detail == 4 || detail == '4';
+    }
+
+    String? _extractName(dynamic value) {
+      if (value == null) return null;
+      if (value is String) {
+        return value.trim().isEmpty ? null : value.trim();
+      }
+      if (value is Map<String, dynamic>) {
+        final nested = value['ruangan'] ??
+            value['nama_ruangan'] ??
+            value['nama'] ??
+            value['name'];
+        if (nested != null) {
+          return _extractName(nested);
+        }
+      }
+      return value.toString();
+    }
     try {
       final response = await http
           .get(Uri.parse("$baseUrl/ruang-rapat/available-now"), headers: headers)
@@ -84,8 +104,31 @@ class ApiService {
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        List<dynamic> rooms = data['data'] ?? [];
-        return rooms.map((e) => e.toString()).toList();
+        final List<dynamic> rooms = data['data'] ?? [];
+        final Set<String> uniqueNames = {};
+
+        for (final room in rooms) {
+          dynamic detail;
+          if (room is Map<String, dynamic>) {
+            detail = room['detail'] ??
+                (room['ruangan'] is Map
+                    ? (room['ruangan'] as Map)['detail']
+                    : null);
+          }
+
+          if (detail != null && !_isMeetingRoomDetail(detail)) {
+            continue;
+          }
+
+          final name = _extractName(room);
+          if (name != null && name.isNotEmpty) {
+            uniqueNames.add(name);
+          }
+        }
+
+        return uniqueNames.isNotEmpty
+            ? uniqueNames.toList()
+            : rooms.map((e) => e.toString()).toList();
       } else {
         throw Exception(data['message'] ?? "Gagal memuat daftar ruangan.");
       }

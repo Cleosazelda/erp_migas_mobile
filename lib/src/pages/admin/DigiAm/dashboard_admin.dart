@@ -50,6 +50,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Future<Map<String, dynamic>>? _futureDashboardStats;
   // ---------------------------------------------
 
+  bool _isMeetingRoomDetail(dynamic detail) {
+    return detail == 2 || detail == '2' || detail == 4 || detail == '4';
+  }
+
   List<Widget> get _adminContentPages {
     return [
       _buildDashboardSummaryContent(context),     // SELALU DI-BUILD ULANG
@@ -96,14 +100,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ]);
       final bookings = results[0] as List<JadwalRapat>;
       final rooms = results[1] as List<Map<String, dynamic>>;
+      final meetingRooms = rooms
+          .where((room) => _isMeetingRoomDetail(room['detail']))
+          .toList();
       if (mounted) {
         setState(() {
           _allBookings = bookings;
           _allBookings.sort((a, b) => b.tanggal.compareTo(a.tanggal));
-          _allRooms = rooms; // ⭐️ PENTING: Ini ngisi total ruangan
+          _allRooms = meetingRooms; // ⭐️ PENTING: Ini ngisi total ruangan
         });
       }
-      return {'bookings': bookings, 'rooms': rooms};
+      return {'bookings': bookings, 'rooms': meetingRooms};
     } catch (error) {
       if (mounted) _showError("Gagal memuat data list admin: ${error.toString().replaceFirst('Exception: ', '')}");
       throw error;
@@ -464,6 +471,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           availableRoomNames = snapshot.data ?? [];
         }
 
+        if (_allRooms.isNotEmpty) {
+          final allowedNames = _allRooms
+              .map((room) => (room['ruangan'] ?? room['nama_ruangan'])?.toString())
+              .whereType<String>()
+              .toSet();
+          final filtered = availableRoomNames
+              .where((name) => allowedNames.contains(name))
+              .toList();
+
+          if (filtered.isNotEmpty) {
+            availableRoomNames = filtered;
+          }
+        }
+
         int availableRoomCount = availableRoomNames.length;
         int totalRuangan = _allRooms.length;
 
@@ -751,21 +772,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       bool isSelected,
       VoidCallback onTap,
       ) {
-    final bool isDark = theme.brightness == Brightness.dark;
+    final Color selectedColor = const Color(0xFF27A843); // Selected
+    final Color unselectedColor = const Color(0xFF82B43F); // Not selected
 
-    Color cardColor;
-    Color monthColor;
-    Color yearColor;
-
-    if (isSelected) {
-      cardColor = Colors.green;
-      monthColor = Colors.white.withOpacity(0.9);
-      yearColor = Colors.white;
-    } else {
-      cardColor = isDark ? Colors.grey[850]! : Colors.white;
-      monthColor = theme.colorScheme.onSurface.withOpacity(0.7);
-      yearColor = theme.colorScheme.onSurface;
-    }
+    Color cardColor = isSelected ? selectedColor : unselectedColor;
+    Color monthColor = isSelected ? Colors.white : Colors.white;
+    Color yearColor = isSelected ? Colors.white : Colors.white;
 
     return Container(
       width: 60,
@@ -776,24 +788,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          splashColor: Colors.greenAccent.withOpacity(0.3),
+          splashColor: Colors.white.withOpacity(0.2),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: isSelected
-                  ? null
-                  : Border.all(
-                color: theme.dividerColor.withOpacity(0.5),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isSelected
-                      ? Colors.green.withOpacity(0.3)
-                      : theme.shadowColor.withOpacity(0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                )
-              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -930,9 +928,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     if (maxUsage == 0.0) maxUsage = 10;
 
     // Ambil urutan ruangan dari _allRooms agar konsisten
-    final List<String> roomOrder = _allRooms
-        .map((r) => r['ruangan'] as String)
-        .toList()..sort();
+    // Ambil urutan ruangan gabungan dari daftar master (_allRooms) dan data chart
+    final Set<String> roomNames = {
+      for (final room in _allRooms)
+        if ((room['ruangan'] ?? room['nama_ruangan']) != null)
+          (room['ruangan'] ?? room['nama_ruangan']).toString(),
+      ...roomUsage.keys,
+    };
+
+
+    final List<String> roomOrder = roomNames.toList()..sort();
 
     List<BarChartGroupData> barGroups = [];
     int i = 0;

@@ -36,6 +36,10 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   final jamList = List.generate(12, (i) => (i + 8).toString().padLeft(2, '0'));
   final menitList = ["00", "15", "30", "45"];
 
+  bool _isMeetingRoomDetail(dynamic detail) {
+    return detail == 2 || detail == '2' || detail == 4 || detail == '4';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +68,13 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
         setState(() {
           perusahaanList = results[0];
           divisiList = results[1];
-          ruanganList = results[2];
+          final rawRooms = List<Map<String, dynamic>>.from(results[2]);
+          // Form tambah jadwal menampilkan ruangan meeting (detail 2 dan 4)
+          // agar hanya ruangan meeting yang valid yang muncul di dropdown.
+          final filteredRooms = rawRooms
+              .where((room) => _isMeetingRoomDetail(room['detail']))
+              .toList();
+          ruanganList = filteredRooms.isNotEmpty ? filteredRooms : rawRooms;
           isDropdownLoading = false;
         });
         print("Perusahaan: $perusahaanList");
