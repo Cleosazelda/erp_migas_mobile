@@ -8,6 +8,7 @@ import 'package:fl_chart/fl_chart.dart';
 // --- Impor Anda ---
 import 'admin_page.dart';
 import '../../login_page.dart';
+// PENTING: Impor KEDUA service
 import '../../../../services/api_service.dart';
 import '../../../../services/jadwal_api_service.dart';
 import '../../../models/jadwal_model.dart';
@@ -33,15 +34,37 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   String _currentPageTitle = "Manajemen Aset";
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  bool _isExpandedAvailableRooms = false;
+
+  // --- ⭐️ PEMBAGIAN STATE BARU ⭐️ ---
+
+  // 1. Data untuk Tab 2 (List Peminjaman) & Total Ruangan
   Future<Map<String, dynamic>>? _futureDashboardData;
   List<JadwalRapat> _allBookings = [];
-  List<Map<String, dynamic>> _allRooms = [];
+  List<Map<String, dynamic>> _allRooms = []; // -> Dipakai untuk total di Card 1
 
-  late final List<Widget> _adminContentPages;
-  bool _isDependenciesInitialized = false;
+  // 2. Data Real-time untuk Card 1 (Ruangan Tersedia)
+  Future<List<String>>? _futureAvailableRooms;
 
-  // --- State Baru untuk UI Dashboard ---
-  DateTime _selectedDate = DateTime(2025, 10, 30); // Hardcode tanggal mockup
+  // 3. Data Filterable untuk Card 2 (Rekap) & Card 3 (Chart)
+  Future<Map<String, dynamic>>? _futureDashboardStats;
+  // ---------------------------------------------
+
+  List<Widget> get _adminContentPages {
+    return [
+      _buildDashboardSummaryContent(context),     // SELALU DI-BUILD ULANG
+      AdminPage(firstName: widget.firstName, lastName: widget.lastName),
+      _buildPlaceholderPage("Admin PBJ"),
+      _buildPlaceholderPage("Manajemen User"),
+    ];
+  }
+
+
+  // --- State untuk Filter UI ---
+  // Default filter: Okt 2025, sesuai contoh API
+  DateTime _selectedDate = DateTime.now();
+  // Tanggal real-time untuk AppBar
+  final DateTime _currentDate = DateTime.now();
   final List<String> _months = const ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   final List<int> _availableYears = const [2025, 2024, 2023];
   // ------------------------------------
@@ -50,31 +73,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null);
-    _loadDashboardData();
+
+    // Panggil semua 3 loader data
+    _loadDashboardData();   // Data untuk Tab 2 & total ruangan
+    _loadAvailableRooms();  // Data real-time Card 1
+    _loadDashboardStats();  // Data filterable Card 2 & 3 (pake default _selectedDate)
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
 
-    // Perbaikan untuk error 'initState' (layar merah)
-    if (!_isDependenciesInitialized) {
-      _adminContentPages = [
-        _buildDashboardSummaryContent(context), // Index 0 (UI BARU)
-        AdminPage(firstName: widget.firstName, lastName: widget.lastName), // Index 1
-        _buildPlaceholderPage("Admin PBJ"), // Index 2
-        _buildPlaceholderPage("Manajemen User"), // Index 3
-      ];
-      _isDependenciesInitialized = true;
-    }
-  }
-
+  // --- 1. Loader untuk Tab 2 & Total Ruangan ---
   Future<void> _loadDashboardData() async {
     setState(() {
       _futureDashboardData = _fetchData();
     });
   }
-
 
   Future<Map<String, dynamic>> _fetchData() async {
     try {
@@ -82,43 +94,69 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         JadwalApiService.getAllJadwal(),
         JadwalApiService.getRuanganList(),
       ]);
-
       final bookings = results[0] as List<JadwalRapat>;
       final rooms = results[1] as List<Map<String, dynamic>>;
-
       if (mounted) {
         setState(() {
           _allBookings = bookings;
           _allBookings.sort((a, b) => b.tanggal.compareTo(a.tanggal));
-          _allRooms = rooms;
+          _allRooms = rooms; // ⭐️ PENTING: Ini ngisi total ruangan
         });
       }
       return {'bookings': bookings, 'rooms': rooms};
     } catch (error) {
-      print("Error loading dashboard data: $error");
-      if (mounted) {
-        _showError("Gagal memuat data dashboard: ${error.toString().replaceFirst('Exception: ', '')}");
-        setState(() {
-          _allBookings = [];
-          _allRooms = [];
-        });
-      }
+      if (mounted) _showError("Gagal memuat data list admin: ${error.toString().replaceFirst('Exception: ', '')}");
       throw error;
     }
   }
 
-  Future<void> _refreshData() async {
-    await _loadDashboardData();
-
-    if (_selectedIndex == 1) {
+  // --- 2. Loader untuk Card 1 (Real-time) ---
+  Future<void> _loadAvailableRooms() async {
+    if (mounted) {
       setState(() {
-        _adminContentPages[1] = AdminPage(
-          firstName: widget.firstName,
-          lastName: widget.lastName,
-        );
+        _futureAvailableRooms = ApiService.getAvailableRooms();
       });
     }
   }
+
+  // --- 3. Loader untuk Card 2 & 3 (Filterable) ---
+  Future<void> _loadDashboardStats() async {
+    if (mounted) {
+      setState(() {
+        // Panggil _fetchDashboardStats() yang SEKARANG HANYA 2 API
+        _futureDashboardStats = _fetchDashboardStats();
+      });
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchDashboardStats() async {
+    try {
+      // Panggil HANYA 2 API yang butuh filter month/year
+      final results = await Future.wait([
+        ApiService.getRekapStatus(month: _selectedDate.month, year: _selectedDate.year),
+        ApiService.getTotalJam(month: _selectedDate.month, year: _selectedDate.year),
+      ]);
+      // Kembalikan data yg sudah di-parse
+      return {
+        'statusCounts': results[0] as Map<String, dynamic>,
+        'totalJam': results[1] as List<Map<String, dynamic>>,
+      };
+    } catch (e) {
+      if (mounted) _showError("Gagal memuat statistik dashboard: ${e.toString().replaceFirst('Exception: ', '')}");
+      throw e;
+    }
+  }
+
+
+  Future<void> _refreshData() async {
+    // Muat ulang KETIGA set data
+    await _loadDashboardData();
+    await _loadAvailableRooms();
+    setState(() {
+      _futureDashboardStats = _fetchDashboardStats();
+    });
+  }
+
 
   void _showError(String message) {
     if (!mounted) return;
@@ -165,7 +203,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         _selectedIndex = index;
         _currentPageTitle = title;
       });
-      // Tutup drawer setelah memilih menu
       Navigator.of(context).pop();
     }
   }
@@ -175,15 +212,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // --- GANTI IKON JADI GAMBAR ---
           Image.asset(
-            "assets/images/DigiAm/ruangan_tersedia.png", // GANTI DENGAN PATH IKON ANDA
+            "assets/images/DigiAm/ruangan_tersedia.png",
             width: 50,
             height: 50,
             color: Colors.grey[400],
             errorBuilder: (ctx,e,st) => Icon(Icons.construction, size: 50, color: Colors.grey[400]),
           ),
-          // -----------------------------
           const SizedBox(height: 16),
           Text(
             "$title\n(Coming Soon)",
@@ -200,8 +235,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final theme = Theme.of(context);
     final String fullName = "${widget.firstName} ${widget.lastName}";
     final bool isDark = theme.brightness == Brightness.dark;
-    String formattedDate =
-    DateFormat('E, dd MMMM yyyy', 'id_ID').format(_selectedDate);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -218,19 +251,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Image.asset(
-                "assets/images/logo.png", // GANTI DENGAN PATH LOGO ANDA
+                "assets/images/logo.png",
                 width: 40,
                 height: 40,
                 errorBuilder: (ctx, e, st) => Icon(Icons.business, size: 40),
               ),
-              // -----------------------------
               const SizedBox(width: 20),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // --- ⭐️ PERUBAHAN DI SINI ⭐️ ---
+                  // Tampilkan tanggal HARI INI (real-time), bukan _selectedDate
                   Text(
-                    DateFormat('E, dd MMMM yyyy', 'id_ID').format(_selectedDate),
+                    DateFormat('E, dd MMMM yyyy', 'id_ID').format(_currentDate),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.hintColor,
                       fontSize: 12,
@@ -252,7 +286,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                 ],
               ),
-
             ],
           ),
           backgroundColor: isDark ? Colors.grey[900] : Colors.white,
@@ -267,55 +300,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ],
         ),
       ),
-
       drawer: Drawer(
         child: Container(
           color: isDark ? Colors.grey[850] : Colors.white,
           child: Column(
             children: [
-              // 🔹 Hapus header greeting di sini
-              // Langsung ke menu item
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem(
-                      context: context,
-                      imagePath: "assets/images/icons/dashboard_icon.png",
-                      title: "Dashboard",
-                      index: 0,
-                      isSelected: _selectedIndex == 0,
-                      onTap: () => _onSelectItem(0, "Manajemen Aset"),
-                    ),
-                    _buildSidebarItem(
-                      context: context,
-                      imagePath: "assets/images/icons/ruangan_icon.png",
-                      title: "Ruang Rapat",
-                      index: 1,
-                      isSelected: _selectedIndex == 1,
-                      onTap: () => _onSelectItem(1, "Admin Ruang Rapat"),
-                    ),
-                    _buildSidebarItem(
-                      context: context,
-                      imagePath: "assets/images/icons/pbj_icon.png",
-                      title: "PBJ",
-                      index: 2,
-                      isSelected: _selectedIndex == 2,
-                      onTap: () => _onSelectItem(2, "Admin PBJ"),
-                    ),
-                    _buildSidebarItem(
-                      context: context,
-                      imagePath: "assets/images/icons/user_icon.png",
-                      title: "Manajemen User",
-                      index: 3,
-                      isSelected: _selectedIndex == 3,
-                      onTap: () => _onSelectItem(3, "Manajemen User"),
-                    ),
+                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/dashboard_icon.png", title: "Dashboard", index: 0, isSelected: _selectedIndex == 0, onTap: () => _onSelectItem(0, "Manajemen Aset"), ),
+                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/ruangan_icon.png", title: "Ruang Rapat", index: 1, isSelected: _selectedIndex == 1, onTap: () => _onSelectItem(1, "Admin Ruang Rapat"), ),
+                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/pbj_icon.png", title: "PBJ", index: 2, isSelected: _selectedIndex == 2, onTap: () => _onSelectItem(2, "Admin PBJ"), ),
+                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/user_icon.png", title: "Manajemen User", index: 3, isSelected: _selectedIndex == 3, onTap: () => _onSelectItem(3, "Manajemen User"), ),
                   ],
                 ),
               ),
-
-              // Tombol logout
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton.icon(
@@ -339,7 +339,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ),
       ),
-
       body: IndexedStack(
         index: _selectedIndex,
         children: _adminContentPages,
@@ -360,17 +359,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           });
         },
         backgroundColor: Colors.green,
-        child: const Icon(Icons.add, color: Colors.white), // FAB Icon biarkan saja
+        child: const Icon(Icons.add, color: Colors.white),
         tooltip: 'Tambah Jadwal Baru',
       )
           : null,
     );
   }
 
-  // --- FUNGSI INI DIUBAH UNTUK MENERIMA 'imagePath' ---
   Widget _buildSidebarItem({
     required BuildContext context,
-    required String imagePath, // <-- UBAH DARI IconData ke String
+    required String imagePath,
     required String title,
     required int index,
     required bool isSelected,
@@ -388,15 +386,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
           child: Row(
             children: [
-              // --- INI PERUBAHANNYA ---
               Image.asset(
-                imagePath, // Gunakan path gambar
+                imagePath,
                 width: 22,
                 height: 22,
-                color: color, // 'color' akan memberi tint pada gambar
-                errorBuilder: (ctx, e, st) => Icon(Icons.error, color: Colors.red, size: 22), // Fallback jika gambar error
+                color: color,
+                errorBuilder: (ctx, e, st) => Icon(Icons.error, color: Colors.red, size: 22),
               ),
-              // ------------------------
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
@@ -417,96 +413,182 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   // =========================================================================
-  // --- MULAI: FUNGSI BARU UNTUK DASHBOARD (INDEX 0) SESUAI MOCKUP ---
+  // --- ⭐️ DASHBOARD CONTENT (INDEX 0) SEKARANG DIBAGI JADI 2 BAGIAN ⭐️ ---
   // =========================================================================
 
+  /// Widget utama yang membangun UI Dashboard (Index 0)
   Widget _buildDashboardSummaryContent(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _futureDashboardData,
+    return Container(
+      color: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF0F2F5),
+      child: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderAndFilter(theme),
+              const SizedBox(height: 20),
+              _buildMonthScroller(theme),
+              const SizedBox(height: 20),
+
+              // --- BAGIAN 1: REAL-TIME ---
+              // Card ini punya FutureBuilder sendiri & tidak terpengaruh filter
+              _buildRealtimeAvailableRoomsCard(theme),
+
+              const SizedBox(height: 16),
+
+              // --- BAGIAN 2: FILTERABLE ---
+              // Card Rekap & Chart ada di dalam FutureBuilder ini
+              // dan akan di-build ulang saat _futureDashboardStats berubah
+              _buildFilterableStatsCards(theme),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Card 1: Ruangan Tersedia (Real-time, tidak ter-filter)
+  /// Card 1: Ruangan Tersedia (Real-time, tidak ter-filter)
+  Widget _buildRealtimeAvailableRoomsCard(ThemeData theme) {
+    return FutureBuilder<List<String>>(
+      future: _futureAvailableRooms,
       builder: (context, snapshot) {
-        // --- Data Kalkulasi ---
-        // 1. Permintaan Tertunda (Status 1: Pending) - tidak peduli tanggal
-        final int totalPersetujuan = _allBookings.where((j) => j.status == 1).length;
-
-        // 2. Ruangan (Total)
-        final int totalRuangan = _allRooms.length;
-
-        // 3. Ruangan tersedia di _selectedDate
-        final Set<String> bookedRoomNamesToday = _allBookings.where((j) =>
-        j.status == 2 && // Hanya yang disetujui
-            DateUtils.isSameDay(j.tanggal, _selectedDate)) // Hanya di tanggal terpilih
-            .map((j) => j.ruangan).toSet();
-
-        final int availableRoomCount = totalRuangan - bookedRoomNamesToday.length;
-
-        // 4. Ambil nama semua ruangan
-        final List<String> allRoomNames = _allRooms.map((r) => r['ruangan'] as String).toList();
-        // 5. Filter nama ruangan yang tersedia
-        final List<String> availableRoomNames = allRoomNames.where((name) => !bookedRoomNamesToday.contains(name)).toList();
-
-        // 6. Kalkulasi data untuk chart berdasarkan tahun terpilih
-        final Map<String, double> roomUsage = _calculateRoomUsage(_selectedDate.year);
-
-        if (snapshot.connectionState == ConnectionState.waiting && _allBookings.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+        // Ambil data dari API
+        List<String> availableRoomNames = [];
+        if (snapshot.hasData) {
+          availableRoomNames = snapshot.data ?? [];
         }
 
-        if (snapshot.hasError && _allBookings.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Gagal memuat data: ${snapshot.error}",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
+        int availableRoomCount = availableRoomNames.length;
+        int totalRuangan = _allRooms.length;
+
+        final bool isDark = theme.brightness == Brightness.dark;
+
+        // expand/collapse state
+        final bool expanded = _isExpandedAvailableRooms;
+
+        // data yang ditampilkan
+        final List<String> toShow = expanded
+            ? availableRoomNames
+            : availableRoomNames.take(2).toList();
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: isDark ? Colors.grey[800] : Colors.white,
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Image.asset(
+                  "assets/images/DigiAm/ruangan_tersedia.png",
+                  height: 70,
+                  width: 70,
+                  errorBuilder: (ctx, e, st) =>
+                      Icon(Icons.meeting_room, size: 40, color: Colors.green),
+                ),
+                const SizedBox(width: 16),
+
+                // ====== TEKS KANAN ======
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Ruangan Tersedia (Hari Ini)",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      // loading / error / jumlah tersedia
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (snapshot.hasError)
+                        Text(
+                          "Gagal memuat",
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                            fontSize: 18,
+                          ),
+                        )
+                      else
+                        Text(
+                          "$availableRoomCount/$totalRuangan",
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+
+                      const SizedBox(height: 8),
+
+                      // ====== LIST RUANGAN ======
+                      ...toShow.map((name) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            "• $name",
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.hintColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+
+                      // ====== tombol expand ======
+                      if (!expanded && availableRoomNames.length > 2)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isExpandedAvailableRooms = true;
+                            });
+                          },
+                          child: Text(
+                            "klik untuk lihat ${availableRoomNames.length - 2} lainnya...",
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.green,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+
+                      // ====== tombol collapse ======
+                      if (expanded)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isExpandedAvailableRooms = false;
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              "Tutup",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _refreshData,
-                    child: const Text("Coba Lagi"),
-                  )
-                ],
-              ),
-            ),
-          );
-        }
-
-        return Container(
-          // Set background abu-abu untuk dashboard content
-          color: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF0F2F5),
-          child: RefreshIndicator(
-            onRefresh: _refreshData,
-            child: SingleChildScrollView(
-              // Padding luar untuk seluruh halaman dashboard
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- PERUBAHAN DI SINI ---
-                  // Header (Hanya Filter Tahun)
-                  _buildHeaderAndFilter(theme),
-                  const SizedBox(height: 20),
-                  // Scroller Bulan
-                  _buildMonthScroller(theme),
-                  // ----------------------------------------------------
-
-                  const SizedBox(height: 20),
-                  // Kartu Ruangan Tersedia
-                  _buildRuanganTersediaCard(theme, availableRoomCount, totalRuangan, availableRoomNames),
-                  const SizedBox(height: 16),
-                  // Kartu Permintaan Tertunda
-                  _buildPermintaanTertundaCard(theme, totalPersetujuan),
-                  const SizedBox(height: 16),
-                  // Kartu Bar Chart
-                  _buildUsageChartCard(theme, roomUsage),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -514,14 +596,72 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  // =========================================================================
-  // --- FUNGSI INI TELAH DIUBAH ---
-  // =========================================================================
+
+  /// Card 2 & 3: Rekap Status dan Chart (Filterable)
+  Widget _buildFilterableStatsCards(ThemeData theme) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _futureDashboardStats,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Tampilkan placeholder loading untuk kedua card
+          return Column(
+            children: [
+              Card(elevation: 0, child: Container(height: 120, child: Center(child: CircularProgressIndicator()))),
+              const SizedBox(height: 16),
+              Card(elevation: 0, child: Container(height: 250, child: Center(child: CircularProgressIndicator()))),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          // Tampilkan error
+          return Card(
+            elevation: 0,
+            color: Colors.red.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 30),
+                    SizedBox(height: 10),
+                    Text(
+                      "Gagal memuat data rekap & grafik: ${snapshot.error.toString().replaceFirst('Exception: ', '')}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Jika sukses, ekstrak datanya
+        final stats = snapshot.data ?? {};
+        final statusCounts = (stats['statusCounts'] as Map<String, dynamic>?) ?? {};
+
+        // --- ⭐️⭐️⭐️ INI DIA FIXNYA ⭐️⭐️⭐️ ---
+        // Baris ini yang menyebabkan error. Kita harus cast dengan benar.
+        final totalJamData = List<Map<String, dynamic>>.from(stats['totalJam'] ?? []);
+        // --- ⭐️⭐️⭐️ SELESAI FIX ⭐️⭐️⭐️ ---
+
+        return Column(
+          children: [
+            // --- Card 2: Rekap Status (BARU) ---
+            _buildRekapStatusCard(theme, statusCounts),
+            const SizedBox(height: 16),
+            // --- Card 3: Grafik (BARU) ---
+            _buildUsageChartCard(theme, totalJamData),
+          ],
+        );
+      },
+    );
+  }
+
+
   /// Membangun header: HANYA Filter Tahun (Teks judul/sapaan dihapus)
   Widget _buildHeaderAndFilter(ThemeData theme) {
-    // Teks judul, tanggal, dan sapaan telah dihapus
-    // karena sudah ada di AppBar.
-    // Kita hanya perlu merender Filter Tahun, dan letakkan di sebelah kanan.
     return Row(
       mainAxisAlignment: MainAxisAlignment.end, // Dorong filter ke kanan
       children: [
@@ -546,11 +686,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 );
               }).toList(),
               onChanged: (int? newYear) {
-                if (newYear != null) {
+                if (newYear != null && newYear != _selectedDate.year) {
                   setState(() {
-                    _selectedDate = DateTime(newYear, _selectedDate.month, _selectedDate.day);
-                    // Data chart & ruangan akan otomatis ter-update saat build ulang
+                    _selectedDate = DateTime(newYear, _selectedDate.month, 1);
+                    _futureDashboardStats = _fetchDashboardStats(); // WAJIB!
                   });
+
                 }
               },
             ),
@@ -561,192 +702,186 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   /// Membangun scroller horizontal untuk bulan
+  /// =============================
+  /// FIXED MONTH SCROLLER + MONTH CARD
+  /// =============================
   Widget _buildMonthScroller(ThemeData theme) {
     return SizedBox(
-      height: 65, // Tinggi area scroller
+      height: 65,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         itemCount: _months.length,
         itemBuilder: (context, index) {
           final monthName = _months[index];
           final monthNumber = index + 1;
           final isSelected = monthNumber == _selectedDate.month;
 
-          // Menggunakan hari "25" dari mockup
-          final dayString = "25";
+          final yearString = _selectedDate.year.toString().substring(2, 4);
 
-          return _buildMonthCard(theme, monthName, dayString, isSelected, () {
-            setState(() {
-              // Saat bulan di-tap, update _selectedDate
-              // Gunakan tanggal 25 sesuai mockup
-              _selectedDate = DateTime(_selectedDate.year, monthNumber, 25);
-            });
-          });
+          return _buildMonthCard(
+            theme,
+            monthName,
+            yearString,
+            isSelected,
+                () {
+              print("Tapped month: $monthNumber"); // Debugging
+
+              if (monthNumber != _selectedDate.month) {
+                setState(() {
+                  _selectedDate = DateTime(_selectedDate.year, monthNumber, 1);
+                  _futureDashboardStats = _fetchDashboardStats(); // WAJIB!
+                });
+              }
+
+                },
+          );
         },
       ),
     );
   }
 
-  /// Widget untuk satu kartu bulan di scroller
-  Widget _buildMonthCard(ThemeData theme, String month, String day, bool isSelected, VoidCallback onTap) {
+  /// =============================
+  /// FIXED MONTH CARD (Inkwell)
+  /// =============================
+  Widget _buildMonthCard(
+      ThemeData theme,
+      String month,
+      String yearSuffix,
+      bool isSelected,
+      VoidCallback onTap,
+      ) {
     final bool isDark = theme.brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 60,
-        margin: const EdgeInsets.only(right: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green : (isDark ? Colors.grey[850] : const Color(0xFF82B43F)),
+
+    Color cardColor;
+    Color monthColor;
+    Color yearColor;
+
+    if (isSelected) {
+      cardColor = Colors.green;
+      monthColor = Colors.white.withOpacity(0.9);
+      yearColor = Colors.white;
+    } else {
+      cardColor = isDark ? Colors.grey[850]! : Colors.white;
+      monthColor = theme.colorScheme.onSurface.withOpacity(0.7);
+      yearColor = theme.colorScheme.onSurface;
+    }
+
+    return Container(
+      width: 60,
+      margin: const EdgeInsets.only(right: 10),
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: isSelected ? null : Border.all(color: theme.dividerColor.withOpacity(0.5)),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected ? Colors.green.withOpacity(0.3) : theme.shadowColor.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            )
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              month, // "Jan", "Feb", ...
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
+          splashColor: Colors.greenAccent.withOpacity(0.3),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected
+                  ? null
+                  : Border.all(
+                color: theme.dividerColor.withOpacity(0.5),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? Colors.green.withOpacity(0.3)
+                      : theme.shadowColor.withOpacity(0.05),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              day, // "25" (dari mockup)
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  month,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: monthColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  yearSuffix,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: yearColor,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Membangun kartu "Ruangan Tersedia"
-  Widget _buildRuanganTersediaCard(ThemeData theme, int available, int total, List<String> names) {
-    final bool isDark = theme.brightness == Brightness.dark;
-    return Card(
-      elevation: 0, // Sesuai mockup, tidak ada shadow
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: isDark ? Colors.grey[800] : Colors.white,
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
 
-            Container(
-              child: Image.asset(
-                "assets/images/DigiAm/ruangan_tersedia.png", // GANTI DENGAN PATH GAMBAR ANDA
-                height: 70,
-                width: 70,
-                // Fallback jika gambar tidak ditemukan
-                errorBuilder: (ctx, e, st) => Icon(Icons.meeting_room, size: 40, color: Colors.green),
-              ), // <-- Kurung tutup yang benar
-            ),
-            // ---------------------------------
-            const SizedBox(width: 16),
-            // Teks
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Ruangan Tersedia",
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    "$available/$total", // "2/6"
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Tampilkan maks 2 ruangan
-                  ...names.take(2).map((name) => Text(
-                    name, // "Ruang Rapat Biomasa"
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )),
-                  if (names.length > 2)
-                    Text(
-                      "+ ${names.length - 2} lainnya...",
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor, fontStyle: FontStyle.italic),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Membangun kartu "Permintaan Tertunda"
-  Widget _buildPermintaanTertundaCard(ThemeData theme, int count) {
+  /// Card 2: Membangun kartu "Rekap Status Ruang Rapat" (Sebelumnya "Permintaan Tertunda")
+  Widget _buildRekapStatusCard(ThemeData theme, Map<String, dynamic> statusCounts) {
     final bool isDark = theme.brightness == Brightness.dark;
+
+    // Ambil data dari map, berikan default 0 jika null
+    final int total = (statusCounts['total'] is int) ? statusCounts['total'] : (int.tryParse(statusCounts['total']?.toString() ?? '0') ?? 0);
+    final int pending = (statusCounts['pending'] is int) ? statusCounts['pending'] : (int.tryParse(statusCounts['pending']?.toString() ?? '0') ?? 0);
+    final int approved = (statusCounts['approved'] is int) ? statusCounts['approved'] : (int.tryParse(statusCounts['approved']?.toString() ?? '0') ?? 0);
+    final int rejected = (statusCounts['rejected'] is int) ? statusCounts['rejected'] : (int.tryParse(statusCounts['rejected']?.toString() ?? '0') ?? 0);
+
+
     return Card(
       elevation: 0, // Sesuai mockup
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: const Color(0xFF82B43F),
-    clipBehavior: Clip.antiAlias,
+      color: const Color(0xFF82B43F), // Tetap pakai warna hijau ini
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // Aksi opsional: pindah ke tab list & filter 'pending'
-          // _onSelectItem(1, "Admin Ruang Rapat");
-          // (perlu cara untuk pass filter ke admin_page)
+          // Aksi: pindah ke tab list (Index 1)
+          _onSelectItem(1, "Admin Ruang Rapat");
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // --- GANTI IKON JADI GAMBAR ---
-              Container(
-                child: Image.asset(
-                  "assets/images/DigiAm/permintaan_tertunda.png", // Ganti dengan path ikon permintaan yang benar
-                  width: 80,
-                  height: 80,
-
-                  errorBuilder: (ctx, e, st) => Icon(Icons.pending_actions, size: 40, color: Colors.green), // Fallback
-                ),
+              Image.asset(
+                "assets/images/DigiAm/permintaan_tertunda.png",
+                width: 80,
+                height: 80,
+                errorBuilder: (ctx, e, st) => Icon(Icons.pending_actions, size: 40, color: Colors.white),
               ),
-              // ------------------------
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Permintaan Tertunda",
+                      "Rekap Status Ruang Rapat", // ⭐️ Judul Baru
                       style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.white
+                          color: Colors.white
                       ),
                     ),
-                    Text(
-                      count.toString(), // "5"
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.white
-                      ),
-                    ),
+                    const SizedBox(height: 8),
+                    // ⭐️ Tampilkan semua data
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildRekapChip("Total", total, Colors.blue.shade100, Colors.blue.shade900),
+                        _buildRekapChip("Pending", pending, Colors.orange.shade100, Colors.orange.shade900),
+                        _buildRekapChip("Approved", approved, Colors.green.shade100, Colors.green.shade900),
+                        _buildRekapChip("Rejected", rejected, Colors.red.shade100, Colors.red.shade900),
+                      ],
+                    )
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: theme.hintColor, size: 16),
+              // Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.7), size: 16),
             ],
           ),
         ),
@@ -754,23 +889,50 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  /// Membangun kartu "Bar Chart"
-  Widget _buildUsageChartCard(ThemeData theme, Map<String, double> roomUsage) {
+  // Helper widget untuk chip di card rekap
+  Widget _buildRekapChip(String label, int count, Color bgColor, Color textColor) {
+    return Column(
+      children: [
+        Text(
+            label,
+            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w500)
+        ),
+        const SizedBox(height: 2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+              count.toString(),
+              style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold)
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  /// Card 3: Membangun kartu "Bar Chart" (Sekarang menerima data API langsung)
+  Widget _buildUsageChartCard(ThemeData theme, List<Map<String, dynamic>> totalJamData) {
     final bool isDark = theme.brightness == Brightness.dark;
 
-    // Cari nilai jam tertinggi untuk normalisasi tinggi bar
-    double maxUsage = roomUsage.values.fold(0.0, (prev, e) => e > prev ? e : prev);
-    if (maxUsage == 0.0) maxUsage = 10; // Nilai default jika 0, agar chart tidak hilang
+    // --- ⭐️ Logika dipindah ke sini ---
+    // Konversi format API ke format yang dibutuhkan chart
+    final Map<String, double> roomUsage = {
+      for (var item in totalJamData.whereType<Map<String, dynamic>>())
+        (item['nama_ruangan']?.toString() ?? 'Unknown') : (double.tryParse(item['total_jam']?.toString() ?? '0.0') ?? 0.0)
+    };
+    // --------------------------------
 
-    // Urutan ruangan sesuai mockup
-    List<String> roomOrder = [
-      "Ruang Rapat Energi Matahari",
-      "Ruang Rapat Gas Bumi",
-      "Ruang Rapat Konservasi energi ", // Spasi di akhir sesuai data Anda
-      "Ruang Rapat Biomasa",
-      "Ruang Rapat Energi Angin",
-      "Ruang Rapat Minyak Bumi",
-    ];
+    double maxUsage = roomUsage.values.fold(0.0, (prev, e) => e > prev ? e : prev);
+    if (maxUsage == 0.0) maxUsage = 10;
+
+    // Ambil urutan ruangan dari _allRooms agar konsisten
+    final List<String> roomOrder = _allRooms
+        .map((r) => r['ruangan'] as String)
+        .toList()..sort();
 
     List<BarChartGroupData> barGroups = [];
     int i = 0;
@@ -787,9 +949,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
 
     return Card(
-      elevation: 0, // Sesuai mockup
+      elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: isDark ? const Color(0xFF333333) : Colors.grey[700], // Background abu-abu tua
+      color: isDark ? const Color(0xFF333333) : Colors.grey[700],
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -803,83 +965,58 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
             ),
             const SizedBox(height: 30),
-            SizedBox(
-              height: 200, // Tinggi chart
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxUsage * 1.2, // Beri sedikit ruang di atas
-                  barTouchData: _buildBarTouchData(theme), // Data untuk tooltip
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) => _getBarTitles(value, meta, theme),
-                        reservedSize: 42, // Ruang untuk label
+            // Tampilkan pesan jika tidak ada data
+            if (roomUsage.values.every((v) => v == 0.0))
+              Container(
+                height: 200,
+                child: Center(
+                  child: Text(
+                    "Tidak ada data pemakaian di bulan ini.",
+                    style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 200,
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: maxUsage * 1.2,
+                    barTouchData: _buildBarTouchData(theme),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) => _getBarTitles(value, meta, theme, roomOrder),
+                          reservedSize: 42,
+                        ),
                       ),
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxUsage > 0 ? maxUsage / 4 : 2,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: Colors.white.withOpacity(0.1),
+                          strokeWidth: 1,
+                        );
+                      },
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: barGroups,
                   ),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: maxUsage > 0 ? maxUsage / 4 : 2, // Tampilkan 4 garis grid
-                    getDrawingHorizontalLine: (value) {
-                      return FlLine(
-                        color: Colors.white.withOpacity(0.1),
-                        strokeWidth: 1,
-                      );
-                    },
-                  ),
-                  borderData: FlBorderData(show: false), // Sembunyikan border
-                  barGroups: barGroups,
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
-  }
-
-  /// Kalkulasi data jam per ruangan untuk tahun terpilih
-  Map<String, double> _calculateRoomUsage(int year) {
-    Map<String, double> usage = {};
-    // Inisialisasi semua ruangan dari _allRooms dengan 0 jam
-    for (var room in _allRooms) {
-      String roomName = room['ruangan'] ?? 'Unknown';
-      usage[roomName] = 0.0;
-    }
-
-    // Filter booking yang status=2 (Disetujui) dan di tahun terpilih
-    var filteredBookings = _allBookings.where((j) =>
-    j.status == 2 &&
-        j.tanggal.year == year);
-
-    for (var booking in filteredBookings) {
-      try {
-        final start = DateFormat("HH:mm:ss").parseStrict(booking.jamMulai);
-        final end = DateFormat("HH:mm:ss").parseStrict(booking.jamSelesai);
-        final durationInMinutes = end.difference(start).inMinutes;
-        double durationInHours = durationInMinutes / 60.0;
-
-        if (durationInHours > 0) {
-          usage.update(booking.ruangan, (value) => value + durationInHours, ifAbsent: () => durationInHours);
-        }
-      } catch (e) {
-        print("Error parsing duration for chart: $e");
-      }
-    }
-    // HACK: Data dummy untuk 'Matahari' 6 jam sesuai mockup
-    // Hapus ini jika data asli sudah benar
-    if (usage.containsKey("Ruang Rapat Energi Matahari")) {
-      usage["Ruang Rapat Energi Matahari"] = 6.0;
-    }
-
-    return usage;
   }
 
   /// Helper untuk data tooltip chart
@@ -889,8 +1026,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         tooltipBgColor: theme.scaffoldBackgroundColor,
         tooltipBorder: BorderSide(color: theme.dividerColor),
         getTooltipItem: (group, groupIndex, rod, rodIndex) {
-          // Tampilkan "6 jam" khusus untuk bar pertama (Matahari)
-          String jam = (groupIndex == 0) ? "6 jam" : "${rod.toY.toStringAsFixed(1)} jam";
+          // Data jam murni dari API
+          String jam = "${rod.toY.toStringAsFixed(1)} jam";
           return BarTooltipItem(
             'Total Pemakaian\n',
             TextStyle(color: theme.hintColor, fontSize: 10),
@@ -911,41 +1048,47 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   /// Helper untuk label bawah chart
-  Widget _getBarTitles(double value, TitleMeta meta, ThemeData theme) {
+  Widget _getBarTitles(double value, TitleMeta meta, ThemeData theme, List<String> roomOrder) {
     const style = TextStyle(
       color: Colors.white70,
       fontWeight: FontWeight.w500,
       fontSize: 10,
     );
 
-    List<String> labels = [
-      "Matahari",
-      "Gas\nBumi",
-      "Konservasi\nEnergi",
-      "Biomasa",
-      "Angin",
-      "Minyak\nBumi",
-    ];
+    String shortLabel = "";
+    if (value.toInt() >= 0 && value.toInt() < roomOrder.length) {
+      final fullName = roomOrder[value.toInt()];
+      // Logika pemendek nama
+      if (fullName.contains("Matahari")) shortLabel = "Matahari";
+      else if (fullName.contains("Gas Bumi")) shortLabel = "Gas\nBumi";
+      else if (fullName.contains("Konservasi")) shortLabel = "Konservasi\nEnergi";
+      else if (fullName.contains("Biomasa")) shortLabel = "Biomasa";
+      else if (fullName.contains("Energi Angin")) shortLabel = "Angin";
+      else if (fullName.contains("Minyak Bumi")) shortLabel = "Minyak\nBumi";
+      else {
+        var parts = fullName.split(" ");
+        shortLabel = parts.length > 2 ? parts[2] : fullName;
+      }
+    }
 
-    Widget text = Text(labels[value.toInt()], style: style, textAlign: TextAlign.center,);
+    Widget text = Text(shortLabel, style: style, textAlign: TextAlign.center,);
 
     return SideTitleWidget(
       axisSide: meta.axisSide,
-      space: 8, // Jarak dari chart
+      space: 8,
       child: text,
     );
   }
 
   /// Helper untuk membuat 1 bar group
   BarChartGroupData _makeBarGroup(int x, double y, bool isDark) {
-    // Sesuai mockup, semua bar putih
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
           toY: y,
-          color: Colors.white, // Semua bar putih sesuai mockup
-          width: 20, // Lebar bar
+          color: Colors.white,
+          width: 20,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(4),
             topRight: Radius.circular(4),

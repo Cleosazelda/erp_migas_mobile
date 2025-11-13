@@ -3,79 +3,135 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Ganti port ke 8085 sesuai contoh API
+  // Base URL API
   static const String baseUrl = "http://103.165.226.178:8085/api";
 
-  // Variabel statis untuk menyimpan token. Bisa diakses dari mana saja.
+  // Token disimpan secara lokal
   static String? _token;
 
-  // Fungsi untuk mengisi token setelah login berhasil.
+  // Setter untuk token
   static void setToken(String token) {
     _token = token;
+
+    print("🔥 TOKEN FLUTTER: ");
+    print(token);
   }
 
-  // Getter yang secara otomatis membuat header otorisasi.
-  // Ini akan dipakai oleh service lain (seperti JadwalApiService).
+  // Getter header
   static Map<String, String> get headers {
-    Map<String, String> baseHeaders = {
+    final baseHeaders = {
       "Content-Type": "application/json",
       "Accept": "application/json",
     };
-    // Baris ini hanya akan menambahkan header Authorization jika token tidak null.
     if (_token != null) {
       baseHeaders["Authorization"] = "Bearer $_token";
     }
     return baseHeaders;
   }
 
+  // =====================================================
+  // =============== AUTH =================================
+  // =====================================================
 
-  // Fungsi untuk login
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/employee/login"),
-        // Gunakan headers dari getter agar otomatis menyertakan Content-Type & Accept
         headers: headers,
         body: jsonEncode({"email": email, "password": password}),
-      ).timeout(const Duration(seconds: 20)); // Tambahkan timeout
+      ).timeout(const Duration(seconds: 20));
 
-      // Cek jika response body kosong atau tidak valid JSON
       if (response.body.isEmpty) {
         throw Exception("Respons dari server kosong.");
       }
 
-      final data = jsonDecode(response.body); // Decode JSON di sini
-
+      final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        if (data is Map<String, dynamic> && data['success'] == true && data['token'] != null) {
-          setToken(data['token']); // Simpan token jika login sukses
+        if (data['success'] == true && data['token'] != null) {
+          setToken(data['token']);
           return {"status": "success", "user": data['data']};
         } else {
-          // Jika success false atau tidak ada token, kembalikan pesan error dari API
-          return {"status": "error", "message": data is Map<String, dynamic> ? data['message'] : "Format respons tidak dikenal"};
+          return {"status": "error", "message": data['message'] ?? "Login gagal"};
         }
       } else {
-        // Tangani error HTTP lainnya
-        String errorMessage = "Gagal login: Error ${response.statusCode}";
-        if (data is Map<String, dynamic> && data['message'] != null) {
-          errorMessage += ". Pesan: ${data['message']}";
-        }
-        throw Exception(errorMessage);
+        throw Exception("Gagal login: ${response.statusCode} - ${data['message']}");
       }
     } on TimeoutException {
       throw Exception("Koneksi ke server time out. Periksa koneksi internet Anda.");
     } on FormatException {
-      throw Exception("Gagal memproses respons dari server. Format tidak valid.");
+      throw Exception("Format respons tidak valid dari server.");
     } catch (e) {
-      // Tangkap error lain dan lempar kembali
-      throw Exception("Terjadi kesalahan: ${e.toString()}");
+      throw Exception("Terjadi kesalahan: $e");
     }
   }
 
-  // Fungsi logout sesuai permintaan: hanya menghapus token secara lokal.
   static Future<void> logout() async {
-    _token = null; // Menghapus token dari memori aplikasi
-    print("Token direset saat logout."); // Tambahkan log
+    _token = null;
+    print("Token direset saat logout.");
     return;
+  }
+
+  // =====================================================
+  // =============== RUANG RAPAT APIs ====================
+  // =====================================================
+
+  /// 1. Cek ruang rapat yang tersedia saat ini
+  static Future<List<String>> getAvailableRooms() async {
+    try {
+      final response = await http
+          .get(Uri.parse("$baseUrl/ruang-rapat/available-now"), headers: headers)
+          .timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        List<dynamic> rooms = data['data'] ?? [];
+        return rooms.map((e) => e.toString()).toList();
+      } else {
+        throw Exception(data['message'] ?? "Gagal memuat daftar ruangan.");
+      }
+    } catch (e) {
+      throw Exception("Gagal memuat ruangan tersedia: $e");
+    }
+  }
+
+  /// 2. Rekap status ruang rapat (total/pending/approved/rejected)
+  static Future<Map<String, dynamic>> getRekapStatus({
+    required int month,
+    required int year,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/ruang-rapat/count-status?month=$month&year=$year");
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'] ?? {};
+      } else {
+        throw Exception(data['message'] ?? "Gagal memuat rekap status.");
+      }
+    } catch (e) {
+      throw Exception("Gagal memuat rekap status: $e");
+    }
+  }
+
+  /// 3. Total jam pemakaian ruang rapat untuk grafik
+  static Future<List<Map<String, dynamic>>> getTotalJam({
+    required int month,
+    required int year,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/ruang-rapat/total-jam?month=$month&year=$year");
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        List<dynamic> list = data['data'] ?? [];
+        return List<Map<String, dynamic>>.from(list);
+      } else {
+        throw Exception(data['message'] ?? "Gagal memuat total jam.");
+      }
+    } catch (e) {
+      throw Exception("Gagal memuat total jam ruang rapat: $e");
+    }
   }
 }
