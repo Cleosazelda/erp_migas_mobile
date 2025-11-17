@@ -14,6 +14,7 @@ import '../../../../services/jadwal_api_service.dart';
 import '../../../models/jadwal_model.dart';
 import '../../DigiAm/tambah_jadwal_page.dart';
 // ---------------------------------------------
+import '../../../erp.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final String firstName;
@@ -70,7 +71,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   // Tanggal real-time untuk AppBar
   final DateTime _currentDate = DateTime.now();
   final List<String> _months = const ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  final List<int> _availableYears = const [2025, 2024, 2023];
+  static const int _firstDashboardYear = 2023;
+  late final List<int> _availableYears;
   // ------------------------------------
 
   @override
@@ -81,9 +83,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     // Panggil semua 3 loader data
     _loadDashboardData();   // Data untuk Tab 2 & total ruangan
     _loadAvailableRooms();  // Data real-time Card 1
+    _availableYears = _generateAvailableYears();
     _loadDashboardStats();  // Data filterable Card 2 & 3 (pake default _selectedDate)
   }
 
+  List<int> _generateAvailableYears() {
+    final currentYear = DateTime.now().year;
+    final years = <int>[];
+    for (var year = currentYear; year >= _firstDashboardYear; year--) {
+      years.add(year);
+    }
+    if (!years.contains(_selectedDate.year)) {
+      years.add(_selectedDate.year);
+      years.sort((a, b) => b.compareTo(a));
+    }
+    return years;
+  }
 
   // --- 1. Loader untuk Tab 2 & Total Ruangan ---
   Future<void> _loadDashboardData() async {
@@ -312,14 +327,31 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           color: isDark ? Colors.grey[850] : Colors.white,
           child: Column(
             children: [
+              _buildDrawerHeader(context: context, fullName: fullName, isDark: isDark),
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/dashboard_icon.png", title: "Dashboard", index: 0, isSelected: _selectedIndex == 0, onTap: () => _onSelectItem(0, "Manajemen Aset"), ),
-                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/ruangan_icon.png", title: "Ruang Rapat", index: 1, isSelected: _selectedIndex == 1, onTap: () => _onSelectItem(1, "Admin Ruang Rapat"), ),
-                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/pbj_icon.png", title: "PBJ", index: 2, isSelected: _selectedIndex == 2, onTap: () => _onSelectItem(2, "Admin PBJ"), ),
-                    _buildSidebarItem( context: context, imagePath: "assets/images/icons/user_icon.png", title: "Manajemen User", index: 3, isSelected: _selectedIndex == 3, onTap: () => _onSelectItem(3, "Manajemen User"), ),
+                    _buildSectionTitle(context, "Menu Utama"),
+                    _buildSidebarItem(
+                      context: context,
+                      imagePath: "assets/images/icons/dashboard_icon.png",
+                      title: "Dashboard",
+                      index: 0,
+                      isSelected: _selectedIndex == 0,
+                      onTap: () => _onSelectItem(0, "Manajemen Aset"),
+                    ),
+
+                    const SizedBox(height: 12),
+                    _buildSectionTitle(context, "Layanan Umum"),
+                    _buildSidebarItem(
+                      context: context,
+                      imagePath: "assets/images/icons/ruangan_icon.png",
+                      title: "Ruang Rapat",
+                      index: 1,
+                      isSelected: _selectedIndex == 1,
+                      onTap: () => _onSelectItem(1, "Admin Ruang Rapat"),
+                    ),
                   ],
                 ),
               ),
@@ -414,6 +446,87 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerHeader({
+    required BuildContext context,
+    required String fullName,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.green[50],
+          border: Border(
+            bottom: BorderSide(
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: Image.asset(
+                  "assets/images/logo.png",
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.account_circle,
+                    size: 38,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fullName.trim().isEmpty ? "Admin" : fullName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Administrator",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+      child: Text(
+        title,
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.hintColor,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -935,6 +1048,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           (room['ruangan'] ?? room['nama_ruangan']).toString(),
       ...roomUsage.keys,
     };
+
 
 
     final List<String> roomOrder = roomNames.toList()..sort();
