@@ -22,6 +22,11 @@ class ERP extends StatelessWidget {
             cardColor: Colors.white,
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.light),
             useMaterial3: true,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent, // WAJIB!
+              elevation: 0,
+            ),
           ),
           darkTheme: ThemeData(
             brightness: Brightness.dark,
@@ -29,6 +34,11 @@ class ERP extends StatelessWidget {
             cardColor: Colors.black,
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
             useMaterial3: true,
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.black,
+              surfaceTintColor: Colors.transparent, // WAJIB!
+              elevation: 0,
+          ),
           ),
           themeMode: mode,
           home: const LoginPage(),

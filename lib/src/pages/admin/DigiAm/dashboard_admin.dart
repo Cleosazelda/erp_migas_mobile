@@ -263,6 +263,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: AppBar(
+
           leading: IconButton(
             icon: Icon(Icons.menu, color: theme.colorScheme.onSurface),
             onPressed: () {
@@ -283,8 +284,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // --- ⭐️ PERUBAHAN DI SINI ⭐️ ---
-                  // Tampilkan tanggal HARI INI (real-time), bukan _selectedDate
+
                   Text(
                     DateFormat('E, dd MMMM yyyy', 'id_ID').format(_currentDate),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -352,6 +352,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       isSelected: _selectedIndex == 1,
                       onTap: () => _onSelectItem(1, "Admin Ruang Rapat"),
                     ),
+                    const SizedBox(height: 12),
+                    _buildThemeToggle(context),
                   ],
                 ),
               ),
@@ -414,8 +416,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    final color = isSelected ? Colors.green : theme.hintColor;
-    final bgColor = isSelected ? Colors.green.withOpacity(0.1) : null;
+    final isDark = theme.brightness == Brightness.dark;
+    final color = isSelected ? theme.colorScheme.onSurface : theme.hintColor;
+    final bgColor = isSelected
+        ? (isDark ? Colors.grey[850] : Colors.grey[200])
+        : Colors.transparent;
 
     return Material(
       color: bgColor,
@@ -438,7 +443,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   title,
                   style: TextStyle(
                     fontSize: 14,
-                    color: isSelected ? Colors.green : theme.colorScheme.onSurface,
+                    color: theme.colorScheme.onSurface,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -446,6 +451,52 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeToggle(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[800] : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+          ),
+        ),
+        child: ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeNotifier,
+          builder: (context, mode, _) {
+            final darkMode = mode == ThemeMode.dark;
+            return SwitchListTile(
+              value: darkMode,
+              onChanged: (value) {
+                themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+              },
+              title: Text(
+                'Mode ${darkMode ? 'Gelap' : 'Terang'}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                'Sesuaikan tampilan sidebar',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+              ),
+              secondary: Icon(
+                darkMode ? Icons.dark_mode : Icons.light_mode,
+                color: theme.colorScheme.primary,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            );
+          },
         ),
       ),
     );
@@ -464,10 +515,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900] : Colors.green[50],
+          color: isDark ? Colors.grey[850] : Colors.white,
           border: Border(
             bottom: BorderSide(
-              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+              color: isDark ? theme.colorScheme.surface : theme.colorScheme.surfaceVariant,
             ),
           ),
         ),
@@ -475,9 +526,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+              backgroundColor: isDark
+                  ? Colors.white.withOpacity(0.2)
+                  : Colors.grey[850]!.withOpacity(0.2),
               child: Padding(
                 padding: const EdgeInsets.all(6.0),
+
                 child: Image.asset(
                   "assets/images/logo.png",
                   fit: BoxFit.contain,
@@ -503,7 +557,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Administrator",
+                    "Admin",
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.hintColor,
                     ),
@@ -949,7 +1003,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Card(
       elevation: 0, // Sesuai mockup
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: const Color(0xFF82B43F), // Tetap pakai warna hijau ini
+      color: const Color(0xFF82B43F),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {

@@ -142,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               Text("Login Aplikasi ERP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                               SizedBox(height: 4),
-                              Text("PT Migas Utama Jabar (Perseroda)", style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+                              Text("PT Migas Utama Jabar (Perseroda)", style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
                             ],
                           ),
                         ),
