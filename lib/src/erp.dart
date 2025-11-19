@@ -38,7 +38,7 @@ class ERP extends StatelessWidget {
               backgroundColor: Colors.black,
               surfaceTintColor: Colors.transparent, // WAJIB!
               elevation: 0,
-          ),
+            ),
           ),
           themeMode: mode,
           home: const LoginPage(),

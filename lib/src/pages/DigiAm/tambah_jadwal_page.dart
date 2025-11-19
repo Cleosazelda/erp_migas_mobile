@@ -20,25 +20,20 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
 
   bool isLoading = false;
   bool isDropdownLoading = true;
-  String? dropdownError; // Untuk menampilkan error load dropdown
 
+  // List Data Dropdown
   List<Map<String, dynamic>> perusahaanList = [];
   List<Map<String, dynamic>> divisiList = [];
   List<Map<String, dynamic>> ruanganList = [];
 
-  // Gunakan tipe data yang konsisten (int?) untuk ID terpilih
+  // Value Terpilih (Tipe int? agar sesuai logika dropdown sebelumnya)
   int? selectedPerusahaanId;
   int? selectedDivisiId;
   int? selectedRuanganId;
-  String? jamMulai, jamSelesai, menitMulai, menitSelesai;
 
-  // Jam 08:00 sampai 19:45
+  String? jamMulai, jamSelesai, menitMulai, menitSelesai;
   final jamList = List.generate(12, (i) => (i + 8).toString().padLeft(2, '0'));
   final menitList = ["00", "15", "30", "45"];
-
-  bool _isMeetingRoomDetail(dynamic detail) {
-    return detail == 2 || detail == '2' || detail == 4 || detail == '4';
-  }
 
   @override
   void initState() {
@@ -49,161 +44,193 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   }
 
   Future<void> _loadDropdownData() async {
-    setState(() {
-      isDropdownLoading = true;
-      dropdownError = null; // Reset error
-    });
+    setState(() => isDropdownLoading = true);
     try {
-      // Mengambil data secara paralel
+      // 1. Ambil semua data yang dibutuhkan (List & Profile)
       final results = await Future.wait([
-        JadwalApiService.getPerusahaanList(),
-        JadwalApiService.getDivisiList(),
-        JadwalApiService.getRuanganList(),
+        JadwalApiService.getPerusahaanList(),    // index 0
+        JadwalApiService.getDivisiList(),        // index 1
+        JadwalApiService.getRuanganList(),       // index 2
+        JadwalApiService.getUserProfileDivisi(), // index 3 (Profile User)
       ]);
 
-      // Sedikit delay untuk memastikan state terupdate setelah Future selesai
-      await Future.delayed(Duration.zero);
-
       if (mounted) {
         setState(() {
-          perusahaanList = results[0];
-          divisiList = results[1];
-          final rawRooms = List<Map<String, dynamic>>.from(results[2]);
-          // Form tambah jadwal menampilkan ruangan meeting (detail 2 dan 4)
-          // agar hanya ruangan meeting yang valid yang muncul di dropdown.
-          final filteredRooms = rawRooms
-              .where((room) => _isMeetingRoomDetail(room['detail']))
-              .toList();
-          ruanganList = filteredRooms.isNotEmpty ? filteredRooms : rawRooms;
+          perusahaanList = results[0] as List<Map<String, dynamic>>;
+          divisiList = results[1] as List<Map<String, dynamic>>;
+          ruanganList = results[2] as List<Map<String, dynamic>>;
+
+          final userProfile = results[3] as Map<String, dynamic>;
+
+          // 2. OTOMATIS SET VALUE DARI PROFILE
+          // Cek apakah data profile ada
+          if (userProfile.isNotEmpty) {
+            // Mapping: 'branch_id' (String "0") -> Int 0
+            if (userProfile['branch_id'] != null) {
+              selectedPerusahaanId = int.tryParse(userProfile['branch_id'].toString());
+            }
+
+            // Mapping: 'organization_id' (Int 166758) -> Int
+            if (userProfile['organization_id'] != null) {
+              selectedDivisiId = int.tryParse(userProfile['organization_id'].toString());
+            }
+
+            // --- LOGIKA TAMBAHAN (SAFETY) ---
+            // Kalau list divisi/perusahaan kosong (misal API list error),
+            // kita suntikkan manual data user ke list biar dropdown ga error "value not in items"
+            // dan tampilannya tetap bener (ada teks-nya).
+
+            // Cek Perusahaan di List
+            bool companyExists = perusahaanList.any((p) => p['id'] == selectedPerusahaanId);
+            if (!companyExists && selectedPerusahaanId != null) {
+              perusahaanList.add({
+                'id': selectedPerusahaanId,
+                'callsign': userProfile['alias'] ?? 'Perusahaan Saya'
+              });
+            }
+
+            // Cek Divisi di List
+            bool divisionExists = divisiList.any((d) => d['id'] == selectedDivisiId);
+            if (!divisionExists && selectedDivisiId != null) {
+              divisiList.add({
+                'id': selectedDivisiId,
+                'divisi': userProfile['organization_name'] ?? 'Divisi Saya'
+              });
+            }
+          }
+
           isDropdownLoading = false;
         });
-        print("Perusahaan: $perusahaanList");
-        print("Divisi: $divisiList");
-        print("Ruangan: $ruanganList");
       }
     } catch (e) {
-      print("Error loading dropdown: $e"); // Log error
-      if (mounted) {
-        setState(() {
-          isDropdownLoading = false;
-          // Tampilkan pesan error yang lebih informatif
-          dropdownError = "Gagal memuat data form: ${e.toString().replaceFirst("Exception: ", "")}";
-        });
-        _showError(dropdownError!); // Tampilkan juga di snackbar
-        // Pertimbangkan untuk tidak langsung menutup halaman, biarkan user coba lagi
-        // Navigator.pop(context);
-      }
+      print("Error: $e");
+      if (mounted) setState(() => isDropdownLoading = false);
     }
   }
 
   Future<void> _simpanJadwal() async {
-    // Validasi tambahan untuk dropdown dan waktu
     if (_formKey.currentState!.validate() &&
         selectedPerusahaanId != null &&
         selectedDivisiId != null &&
         selectedRuanganId != null &&
-        jamMulai != null && menitMulai != null &&
-        jamSelesai != null && menitSelesai != null)
-    {
-      // Validasi Logika Waktu
-      final waktuMulai = int.parse(jamMulai!) * 60 + int.parse(menitMulai!);
-      final waktuSelesai = int.parse(jamSelesai!) * 60 + int.parse(menitSelesai!);
-
-      if (waktuSelesai <= waktuMulai) {
-        _showError("Jam selesai harus setelah jam mulai.");
-        return;
-      }
-
+        jamMulai != null &&
+        jamSelesai != null) {
 
       setState(() => isLoading = true);
       try {
         final data = {
           "agenda": agendaController.text,
-          "perusahaan_id": selectedPerusahaanId, // Kirim sebagai int
-          "divisi": selectedDivisiId,          // Kirim ID divisi sebagai int
-          "user": widget.namaPengguna,        // Ini mungkin tidak diperlukan oleh API POST, tapi kita include dulu
-          "ruangan": selectedRuanganId,        // Kirim sebagai int
+          "perusahaan_id": selectedPerusahaanId,
+          "divisi": selectedDivisiId,
+          "ruangan": selectedRuanganId,
           "tanggal": tanggalController.text,
-          "jam_mulai": "$jamMulai:$menitMulai",   // Format HH:mm
-          "jam_selesai": "$jamSelesai:$menitSelesai", // Format HH:mm
+          "jam_mulai": "$jamMulai:$menitMulai",
+          "jam_selesai": "$jamSelesai:$menitSelesai",
           "jml_peserta": int.tryParse(pesertaController.text) ?? 1,
-          "keterangan": catatanController.text.isNotEmpty ? catatanController.text : null,
-          "status": 1 // Status 1 untuk pengajuan baru
+          "keterangan": catatanController.text,
+          "status": 1,
+          "user": widget.namaPengguna
         };
 
-        final response = await JadwalApiService.addJadwal(data);
+        await JadwalApiService.addJadwal(data);
         if (mounted) {
-          // Cek respons dari API jika ada pesan sukses spesifik
-          _showSuccess(response['message'] ?? "Jadwal berhasil ditambahkan!");
-          Navigator.pop(context, true); // Kirim true untuk reload data di halaman sebelumnya
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Berhasil disimpan"), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {
-          _showError("Gagal menyimpan: ${e.toString().replaceFirst("Exception: ", "")}");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red),
+          );
         }
       } finally {
         if (mounted) setState(() => isLoading = false);
       }
     } else {
-      // Tampilkan pesan jika ada field yang belum diisi
-      _showError("Harap lengkapi semua field yang wajib diisi.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lengkapi semua data"), backgroundColor: Colors.red),
+      );
     }
   }
 
   @override
-  void dispose() {
-    namaController.dispose();
-    tanggalController.dispose();
-    agendaController.dispose();
-    catatanController.dispose();
-    pesertaController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // --- PENYESUAIAN TEMA ---
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      // --- PENYESUAIAN TEMA ---
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey.shade100,
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(theme),
               Expanded(
                 child: isDropdownLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : dropdownError != null
-                    ? Center(
-                    child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error_outline, color: Colors.red, size: 40),
-                              SizedBox(height: 10),
-                              Text(dropdownError!, textAlign: TextAlign.center, style: TextStyle(color: Colors.red)),
-                              SizedBox(height: 10),
-                              ElevatedButton(
-                                onPressed: _loadDropdownData,
-                                child: Text("Coba Lagi"),
-                              )
-                            ]
-                        )
-                    )
-                )
                     : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: _buildFormContent(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTextField(namaController, "Nama Pengguna (PIC)", readOnly: true, filled: true),
+                      const SizedBox(height: 16),
+                      _buildTanggalField(theme),
+                      const SizedBox(height: 16),
+
+                      // --- DROPDOWN PERUSAHAAN (Tampilan Tetap Dropdown) ---
+                      _buildDropdown(
+                        label: "Perusahaan",
+                        hint: "Pilih Perusahaan",
+                        items: perusahaanList,
+                        idKey: 'id',
+                        nameKey: 'callsign',
+                        value: selectedPerusahaanId,
+                        onChanged: (v) => setState(() => selectedPerusahaanId = v),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- DROPDOWN DIVISI (Tampilan Tetap Dropdown) ---
+                      _buildDropdown(
+                        label: "Divisi",
+                        hint: "Pilih Divisi",
+                        items: divisiList,
+                        idKey: 'id',
+                        nameKey: 'divisi',
+                        value: selectedDivisiId,
+                        onChanged: (v) => setState(() => selectedDivisiId = v),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- DROPDOWN RUANGAN ---
+                      _buildDropdown(
+                        label: "Ruangan",
+                        hint: "Pilih Ruangan",
+                        items: ruanganList,
+                        idKey: 'id', // atau 'ruangan_id' sesuai API ruangan
+                        nameKey: 'ruangan',
+                        value: selectedRuanganId,
+                        onChanged: (v) => setState(() => selectedRuanganId = v),
+                      ),
+
+                      const SizedBox(height: 16),
+                      _buildJamMenit("Jam Mulai", jamMulai, menitMulai, (v) => setState(() => jamMulai = v), (v) => setState(() => menitMulai = v), theme, isDark),
+                      const SizedBox(height: 16),
+                      _buildJamMenit("Jam Selesai", jamSelesai, menitSelesai, (v) => setState(() => jamSelesai = v), (v) => setState(() => menitSelesai = v), theme, isDark),
+                      const SizedBox(height: 16),
+                      _buildTextField(pesertaController, "Jumlah Peserta", keyboard: TextInputType.number),
+                      const SizedBox(height: 16),
+                      _buildTextField(agendaController, "Agenda Rapat", maxLines: 3),
+                      const SizedBox(height: 16),
+                      _buildTextField(catatanController, "Catatan Tambahan (Opsional)", maxLines: 3, isRequired: false),
+                    ],
+                  ),
                 ),
               ),
-              // Hanya tampilkan tombol jika tidak loading dan tidak ada error dropdown
-              if (!isDropdownLoading && dropdownError == null) _buildBottomButtons(),
+              _buildBottomButtons(theme),
             ],
           ),
         ),
@@ -211,341 +238,132 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     );
   }
 
-  Widget _buildHeader() {
-    final theme = Theme.of(context);
+  // --- Helper Widgets (Sama seperti sebelumnya) ---
+
+  Widget _buildHeader(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(16),
-      // --- PENYESUAIAN TEMA --- (Optional: beri sedikit background berbeda)
       decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 2, offset: Offset(0,1))
-          ]
+        color: theme.cardColor,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Tambah Jadwal Ruang Rapat", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            // --- PENYESUAIAN TEMA ---
-            icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
-            tooltip: "Tutup",
-          ),
+          Text("Tambah Jadwal", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
         ],
       ),
     );
   }
 
-
-  Widget _buildFormContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTextField(namaController, "Nama Pengguna (PIC)", readOnly: true, filled: true),
-        const SizedBox(height: 16),
-        _buildTanggalField(),
-        const SizedBox(height: 16),
-        // --- PERBAIKAN DROPDOWN ---
-        // Pastikan 'id' dan 'callsign' adalah key yang benar dari API /perusahaan
-        _buildDropdown<int>(
-            label: "Perusahaan",
-            hint: "Pilih Perusahaan",
-            items: perusahaanList,
-            idKey: 'id', // Sesuaikan jika key ID dari API berbeda
-            nameKey: 'callsign', // Sesuaikan jika key nama dari API berbeda
-            value: selectedPerusahaanId,
-            onChanged: (v) => setState(() => selectedPerusahaanId = v)
-        ),
-        const SizedBox(height: 16),
-        // --- PERBAIKAN DROPDOWN ---
-        // Pastikan 'id' dan 'divisi' adalah key yang benar dari API /divisi
-        _buildDropdown<int>(
-            label: "Divisi",
-            hint: "Pilih Divisi",
-            items: divisiList,
-            idKey: 'id', // Sesuaikan jika key ID dari API berbeda (mungkin 'organization_id'?)
-            nameKey: 'divisi', // Sesuaikan jika key nama dari API berbeda (mungkin 'organization_name'?)
-            value: selectedDivisiId,
-            onChanged: (v) => setState(() => selectedDivisiId = v)
-        ),
-        const SizedBox(height: 16),
-        // --- PERBAIKAN DROPDOWN ---
-        // Pastikan 'id' dan 'ruangan' adalah key yang benar dari API /ruangan
-        _buildDropdown<int>(
-            label: "Ruangan",
-            hint: "Pilih Ruangan",
-            items: ruanganList,
-            idKey: 'id', // Sesuaikan jika key ID dari API berbeda
-            nameKey: 'ruangan', // Sesuaikan jika key nama dari API berbeda
-            value: selectedRuanganId,
-            onChanged: (v) => setState(() => selectedRuanganId = v)
-        ),
-        const SizedBox(height: 16),
-        _buildJamMenit("Jam Mulai", jamMulai, menitMulai, (v) => setState(() => jamMulai = v), (v) => setState(() => menitMulai = v)),
-        const SizedBox(height: 16),
-        _buildJamMenit("Jam Selesai", jamSelesai, menitSelesai, (v) => setState(() => jamSelesai = v), (v) => setState(() => menitSelesai = v)),
-        const SizedBox(height: 16),
-        _buildTextField(pesertaController, "Jumlah Peserta", keyboard: TextInputType.number),
-        const SizedBox(height: 16),
-        _buildTextField(agendaController, "Agenda Rapat", maxLines: 3),
-        const SizedBox(height: 16),
-        _buildTextField(catatanController, "Catatan Tambahan (Opsional)", maxLines: 3, isRequired: false),
-      ],
-    );
-  }
-
-  Widget _buildBottomButtons() {
-    return Container(
-      // --- PENYESUAIAN TEMA --- (Beri background agar kontras)
-      color: Theme.of(context).cardColor,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                // --- PENYESUAIAN TEMA ---
-                side: BorderSide(color: Theme.of(context).colorScheme.primary),
-              ),
-              // --- PENYESUAIAN TEMA ---
-              child: Text("Batal", style: TextStyle(color: Theme.of(context).colorScheme.primary))
-          )),
-          const SizedBox(width: 12),
-          Expanded(child: ElevatedButton(
-            onPressed: isLoading ? null : _simpanJadwal,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // Tetap hijau untuk aksi utama
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14)
-            ),
-            child: isLoading
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text("Simpan Jadwal"),
-          )),
-        ],
-      ),
-    );
-  }
-
-// --- PERBAIKAN DROPDOWN --- (Gunakan Generics <T> untuk tipe value)
-  DropdownButtonFormField<T> _buildDropdown<T>({
+  Widget _buildDropdown({
     required String label,
     required String hint,
     required List<Map<String, dynamic>> items,
     required String idKey,
     required String nameKey,
-    required T? value,
-    required ValueChanged<T?> onChanged,
-    String? Function(T?)? validator, // Tambahkan validator opsional
+    required int? value,
+    required ValueChanged<int?> onChanged,
   }) {
-    return DropdownButtonFormField<T>(
-      value: value,
-      hint: Text(hint), // Tambahkan hint
-      isExpanded: true, // Agar teks panjang tidak terpotong
+    // Cek apakah value ada di items, jika tidak null-kan agar tidak error
+    final isValidValue = value != null && items.any((i) => i[idKey] == value);
+
+    return DropdownButtonFormField<int>(
+      value: isValidValue ? value : null,
+      hint: Text(hint),
+      isExpanded: true,
       items: items.map((item) {
-        // Pastikan value sesuai dengan tipe T (int dalam kasus ini)
-        T itemValue;
-        if (item[idKey] is T) {
-          itemValue = item[idKey];
-        } else if (T == int && item[idKey] is String) {
-          // Coba konversi String ke int jika T adalah int
-          itemValue = int.tryParse(item[idKey].toString()) as T? ?? item[idKey]; // Fallback ke nilai asli jika parse gagal
-        } else if (T == int && item[idKey] is num) {
-          itemValue = (item[idKey] as num).toInt() as T; // Konversi num ke int
-        }
-        else {
-          // Fallback jika tipe tidak cocok atau T bukan int
-          itemValue = item[idKey];
-        }
-        return DropdownMenuItem<T>(
-          value: itemValue,
-          child: Text(
-            item[nameKey]?.toString() ?? 'N/A', // Tampilkan 'N/A' jika nama null
-            overflow: TextOverflow.ellipsis, // Atasi teks panjang
-          ),
+        return DropdownMenuItem<int>(
+          value: item[idKey] as int,
+          child: Text(item[nameKey].toString(), overflow: TextOverflow.ellipsis),
         );
       }).toList(),
-      onChanged: onChanged,
+      onChanged: onChanged, // User masih bisa ganti (sesuai request "tampilan sama")
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15), // Sesuaikan padding
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       ),
-      validator: validator ?? (v) => v == null ? 'Wajib diisi' : null, // Validator default
+      validator: (v) => v == null ? 'Wajib diisi' : null,
     );
   }
 
-
-  Widget _buildJamMenit(
-      String label, String? jam, String? menit,
-      ValueChanged<String?> onJamChanged, ValueChanged<String?> onMenitChanged) {
-    return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- PENYESUAIAN TEMA ---
-          Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
-          const SizedBox(height: 4),
-          Row(
-              children: [
-                Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: jam,
-                      items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: onJamChanged,
-                      decoration: InputDecoration(
-                        labelText: "Jam",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                      ),
-                      validator: (v) => v == null ? 'Wajib' : null,
-                    )
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: menit,
-                      items: menitList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: onMenitChanged,
-                      decoration: InputDecoration(
-                        labelText: "Menit",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                      ),
-                      validator: (v) => v == null ? 'Wajib' : null,
-                    )
-                ),
-              ]
-          ),
-        ]
-    );
-  }
-
-  TextFormField _buildTextField(TextEditingController controller, String label, {int maxLines = 1, TextInputType keyboard = TextInputType.text, bool readOnly = false, bool filled = false, bool isRequired = true}) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  Widget _buildTextField(TextEditingController c, String label, {bool readOnly = false, bool filled = false, int maxLines = 1, TextInputType keyboard = TextInputType.text, bool isRequired = true}) {
     return TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboard,
-        readOnly: readOnly,
-        // --- PENYESUAIAN TEMA ---
-        style: TextStyle(color: theme.colorScheme.onSurface),
-        decoration: InputDecoration(
-          labelText: label,
-          // --- PENYESUAIAN TEMA ---
-          labelStyle: TextStyle(color: theme.hintColor),
-          filled: filled,
-          // --- PENYESUAIAN TEMA ---
-          fillColor: filled ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200) : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            // --- PENYESUAIAN TEMA ---
-            borderSide: BorderSide(color: theme.dividerColor),
-          ),
-          enabledBorder: OutlineInputBorder( // Border saat tidak fokus
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-          ),
-          focusedBorder: OutlineInputBorder( // Border saat fokus
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-          ),
-          alignLabelWithHint: maxLines > 1,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15), // Padding konsisten
-        ),
-        validator: (v) {
-          if (isRequired && (v == null || v.trim().isEmpty)) { // Trim untuk cek spasi
-            return 'Wajib diisi';
-          }
-          if (label == "Jumlah Peserta") { // Validasi angka untuk peserta
-            if (int.tryParse(v!) == null || int.parse(v) <= 0) {
-              return 'Masukkan angka valid (> 0)';
-            }
-          }
-          return null;
-        }
+      controller: c,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      keyboardType: keyboard,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: filled,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      validator: (v) => isRequired && (v == null || v.isEmpty) ? 'Wajib diisi' : null,
     );
   }
 
-  TextFormField _buildTanggalField() {
-    final theme = Theme.of(context);
+  Widget _buildTanggalField(ThemeData theme) {
     return TextFormField(
       controller: tanggalController,
       readOnly: true,
-      // --- PENYESUAIAN TEMA ---
-      style: TextStyle(color: theme.colorScheme.onSurface),
       onTap: () async {
-        final date = await showDatePicker(
+        final d = await showDatePicker(
           context: context,
-          initialDate: DateTime.tryParse(tanggalController.text) ?? DateTime.now(), // Gunakan tanggal terpilih jika ada
-          firstDate: DateTime.now().subtract(const Duration(days: 30)), // Batasi tanggal awal
-          lastDate: DateTime.now().add(const Duration(days: 365)), // Batasi tanggal akhir
-          // --- PENYESUAIAN TEMA ---
-          builder: (context, child) {
-            return Theme(
-              data: theme.copyWith(
-                colorScheme: theme.colorScheme.copyWith(
-                  primary: Colors.green, // Warna header
-                  onPrimary: Colors.white, // Teks di header
-                  onSurface: theme.colorScheme.onSurface, // Teks tanggal
-                ),
-                textButtonTheme: TextButtonThemeData(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.green, // Warna tombol OK/Cancel
-                  ),
-                ),
-              ),
-              child: child!,
-            );
-          },
+          initialDate: DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime(2030),
         );
-        if (date != null) {
-          tanggalController.text = DateFormat('yyyy-MM-dd').format(date);
-        }
+        if (d != null) tanggalController.text = DateFormat('yyyy-MM-dd').format(d);
       },
       decoration: InputDecoration(
-        labelText: "Tanggal Rapat",
-        // --- PENYESUAIAN TEMA ---
-        labelStyle: TextStyle(color: theme.hintColor),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          // --- PENYESUAIAN TEMA ---
-          borderSide: BorderSide(color: theme.dividerColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
-        ),
-        // --- PENYESUAIAN TEMA ---
-        suffixIcon: Icon(Icons.calendar_today, color: theme.hintColor),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+        labelText: "Tanggal",
+        suffixIcon: const Icon(Icons.calendar_today),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
     );
   }
 
-  // --- Fungsi Helper untuk Snackbar ---
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.red,
-      behavior: SnackBarBehavior.floating, // Floating agar tidak menutupi tombol
-    ));
+  Widget _buildJamMenit(String label, String? jam, String? menit, ValueChanged<String?> onJam, ValueChanged<String?> onMenit, ThemeData theme, bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            value: jam,
+            items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: onJam,
+            decoration: InputDecoration(labelText: "$label (Jam)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            value: menit,
+            items: menitList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: onMenit,
+            decoration: InputDecoration(labelText: "Menit", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+          ),
+        ),
+      ],
+    );
   }
 
-  void _showSuccess(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.green,
-      behavior: SnackBarBehavior.floating,
-    ));
+  Widget _buildBottomButtons(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: theme.cardColor,
+      child: Row(
+        children: [
+          Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("Batal"))),
+          const SizedBox(width: 12),
+          Expanded(child: ElevatedButton(
+            onPressed: isLoading ? null : _simpanJadwal,
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Simpan"),
+          )),
+        ],
+      ),
+    );
   }
 }

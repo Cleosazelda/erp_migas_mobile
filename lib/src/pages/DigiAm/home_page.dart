@@ -5,6 +5,7 @@ import 'tambah_jadwal_page.dart';
 import '../../../services/jadwal_api_service.dart';
 import '../../../src/models/jadwal_model.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import '../home_page.dart';
 
 class DigiAmHomePage extends StatefulWidget {
   final String firstName;
@@ -241,8 +242,28 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             ),
             decoration: const BoxDecoration(color: Colors.green),
           ),
-          _drawerItem(Icons.apps_sharp, "Layanan Umum"),
-          _drawerItem(Icons.meeting_room, "Ruang Rapat", isSelected: true),
+          _drawerItem(
+            Icons.apps_sharp,
+            "Layanan Umum",
+            onTap: () => Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HomePage(
+                  firstName: widget.firstName,
+                  lastName: widget.lastName,
+                ),
+              ),
+            ),
+          ),
+          _drawerItem(
+            Icons.meeting_room,
+            "Ruang Rapat",
+            isSelected: true,
+            onTap: () {
+              Navigator.pop(context);
+              _tabController.animateTo(0);
+            },
+          ),
         ],
       ),
     );
@@ -338,7 +359,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     }
   }
 
-  ListTile _drawerItem(IconData icon, String title, {bool isSelected = false}) {
+  ListTile _drawerItem(IconData icon, String title, {bool isSelected = false, VoidCallback? onTap}) {
     // ... (Fungsi _drawerItem tidak berubah)
     final theme = Theme.of(context);
     final color = isSelected ? Colors.green : theme.colorScheme.onSurface;
@@ -347,7 +368,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       title: Text(title, style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       leading: Icon(icon, color: isSelected ? Colors.green : Colors.grey.shade600),
       tileColor: isSelected ? Colors.green.shade50 : null,
-      onTap: () {},
+      onTap: onTap,
     );
   }
 

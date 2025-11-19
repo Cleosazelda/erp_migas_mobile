@@ -88,6 +88,28 @@ class JadwalApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getUserProfileDivisi() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/profile/divisi"), // Endpoint baru
+        headers: ApiService.headers,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true && body['data'] != null) {
+          return body['data']; // Return objek 'data' langsung
+        } else {
+          throw Exception("Gagal memuat data profil user: ${body['message']}");
+        }
+      } else {
+        throw Exception("Gagal memuat data profil (Status: ${response.statusCode})");
+      }
+    } catch (e) {
+      throw Exception("Error fetch profil: $e");
+    }
+  }
+
   // ASUMSI: Endpoint /api/perusahaan ada dan mengembalikan {"data": [...]}
   static Future<List<Map<String, dynamic>>> getPerusahaanList() async {
     try {
