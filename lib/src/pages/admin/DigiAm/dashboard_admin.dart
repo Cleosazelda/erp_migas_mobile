@@ -332,21 +332,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildSectionTitle(context, "Menu Utama"),
+                    _buildSectionTitle(context, "Layanan Umum"),
                     _buildSidebarItem(
                       context: context,
-                      imagePath: "assets/images/icons/dashboard_icon.png",
+                      imagePath: "assets/images/DigiAm/dashboard_logo.png",
                       title: "Dashboard",
                       index: 0,
                       isSelected: _selectedIndex == 0,
                       onTap: () => _onSelectItem(0, "Manajemen Aset"),
                     ),
 
-                    const SizedBox(height: 12),
-                    _buildSectionTitle(context, "Layanan Umum"),
                     _buildSidebarItem(
                       context: context,
-                      imagePath: "assets/images/icons/ruangan_icon.png",
+                      imagePath: "assets/images/DigiAm/ruang_rapat_logo.png",
                       title: "Ruang Rapat",
                       index: 1,
                       isSelected: _selectedIndex == 1,
@@ -354,6 +352,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                     const SizedBox(height: 12),
                     _buildThemeToggle(context),
+
                   ],
                 ),
               ),

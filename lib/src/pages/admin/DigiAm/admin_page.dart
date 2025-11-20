@@ -549,20 +549,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                       ),
                     ),
                     const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () {
-                        _showSnackBar("Fitur filter lanjutan belum diimplementasikan.");
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.filter_list,
-                          color: theme.colorScheme.primary,
-                          size: 24,
-                        ),
-                      ),
-                    ),
+
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -706,71 +693,109 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     final durationString = _calculateDuration(jadwal.jamMulai, jadwal.jamSelesai);
     final bool isDark = theme.brightness == Brightness.dark;
 
-    return InkWell(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "${jadwal.agenda} (${jadwal.jumlahPeserta} Org)",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: statusColor.withOpacity(isDark ? 0.3 : 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: statusColor.withOpacity(0.5), width: 0.5)
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Material(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        elevation: isDark ? 0 : 2,
+        borderRadius: BorderRadius.circular(12),
+        shadowColor: theme.shadowColor.withOpacity(0.08),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {},
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "${jadwal.agenda}",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(isDark ? 0.25 : 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: statusColor.withOpacity(0.5), width: 0.6),
+                                ),
+                                child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(isDark ? 0.22 : 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.people_alt_outlined, size: 14, color: theme.colorScheme.primary),
+                                    const SizedBox(width: 6),
+                                    Text("${jadwal.jumlahPeserta} peserta", style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
                     ),
-                    child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildDetailRowList(null,
-                      "Tanggal Peminjaman : ${DateFormat('dd-MM-yyyy - HH:mm', 'id_ID').format(jadwal.tanggal)}", theme),
-                  _buildDetailRowList(null,
-                      "Waktu : $timeRange ($durationString)", theme),
-                  _buildDetailRowList(null,
-                      "Keterangan : ${jadwal.ruangan}", theme),
-                  _buildDetailRowList(null,
-                      "PIC : ${jadwal.pic}", theme),
-                  _buildDetailRowList(null,
-                      jadwal.divisi, theme),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert, color: theme.hintColor),
-              tooltip: "Opsi",
-              enabled: !_isProcessingAction,
-              onSelected: (String action) => _handleAction(action, jadwal),
-              itemBuilder: (BuildContext context) {
-                List<PopupMenuEntry<String>> items = [];
-                if (jadwal.status != 2) {
-                  items.add(_buildPopupMenuItem('approve', Icons.check_circle_outline, 'Setujui', Colors.green));
-                }
-                if (jadwal.status != 3) {
-                  items.add(_buildPopupMenuItem('reject', Icons.cancel_outlined, 'Tolak', Colors.orange));
-                }
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: theme.hintColor),
+                      tooltip: "Opsi",
+                      enabled: !_isProcessingAction,
+                      onSelected: (String action) => _handleAction(action, jadwal),
+                      itemBuilder: (BuildContext context) {
+                        List<PopupMenuEntry<String>> items = [];
+                        if (jadwal.status != 2) {
+                          items.add(_buildPopupMenuItem('approve', Icons.check_circle_outline, 'Setujui', Colors.green));
+                        }
+                        if (jadwal.status != 3) {
+                          items.add(_buildPopupMenuItem('reject', Icons.cancel_outlined, 'Tolak', Colors.orange));
+                        }
 
-                if (jadwal.status != 2 && jadwal.status != 3) {
-                  items.add(const PopupMenuDivider());
-                } else if (items.isNotEmpty) {
-                  items.add(const PopupMenuDivider());
-                }
+                        if (jadwal.status != 2 && jadwal.status != 3) {
+                          items.add(const PopupMenuDivider());
+                        } else if (items.isNotEmpty) {
+                          items.add(const PopupMenuDivider());
+                        }
 
-                items.add(_buildPopupMenuItem('delete', Icons.delete_outline, 'Hapus', Colors.red));
-                return items;
-              },
+                        items.add(_buildPopupMenuItem('delete', Icons.delete_outline, 'Hapus', Colors.red));
+                        return items;
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRowList(null,
+                    "Tanggal Peminjaman : ${DateFormat('dd-MM-yyyy - HH:mm', 'id_ID').format(jadwal.tanggal)}", theme),
+                _buildDetailRowList(null,
+                    "Waktu : $timeRange ($durationString)", theme),
+                _buildDetailRowList(null,
+                    "Keterangan : ${jadwal.ruangan}", theme),
+                _buildDetailRowList(null,
+                    "PIC : ${jadwal.pic}", theme),
+                _buildDetailRowList(null,
+                    jadwal.divisi, theme),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

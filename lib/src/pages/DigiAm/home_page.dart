@@ -31,6 +31,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   List<JadwalRapat> _filteredBookings = []; // Data yang sudah difilter (oleh user & search)
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _selectedFilterChip;
   // --- AKHIR TAMBAHAN ---
 
   @override
@@ -117,7 +118,43 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       }).toList();
     }
 
-    // 3. Urutkan (misalnya, terbaru dulu)
+    // 3. Filter berdasarkan chip yang dipilih (status/ruangan)
+    if (_selectedFilterChip != null) {
+      switch (_selectedFilterChip) {
+        case 'Pending':
+          tempFiltered = tempFiltered.where((j) => j.status == 1).toList();
+          break;
+        case 'Disetujui':
+          tempFiltered = tempFiltered.where((j) => j.status == 2).toList();
+          break;
+        case 'Ditolak':
+          tempFiltered = tempFiltered.where((j) => j.status == 3).toList();
+          break;
+        case 'Energi Matahari':
+          tempFiltered =
+              tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Energi Matahari').toList();
+          break;
+        case 'Gas Bumi':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Gas Bumi').toList();
+          break;
+        case 'Konservasi Energi':
+          tempFiltered = tempFiltered
+              .where((j) => j.ruangan == 'Ruang Rapat Konservasi energi ')
+              .toList();
+          break;
+        case 'Biomasa':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Biomasa').toList();
+          break;
+        case 'Energi Angin':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Energi Angin').toList();
+          break;
+        case 'Minyak Bumi':
+          tempFiltered = tempFiltered.where((j) => j.ruangan == 'Ruang Rapat Minyak Bumi').toList();
+          break;
+      }
+    }
+
+    // 4. Urutkan (misalnya, terbaru dulu)
     tempFiltered.sort((a, b) => b.tanggal.compareTo(a.tanggal));
 
     setState(() {
@@ -394,37 +431,86 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     return Container(
       color: theme.scaffoldBackgroundColor,
       child: Column(
+          children: [
+      // --- Search Bar (diambil dari admin_page) ---
+      Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      color: isDark ? Colors.grey[850] : Colors.white,
+      child: Column(
         children: [
-          // --- Search Bar (diambil dari admin_page) ---
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            color: isDark ? Colors.grey[850] : Colors.white,
-            child: TextField(
-              controller: _searchController,
-              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Cari agenda, ruangan, divisi...',
-                hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
-                prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
-                isDense: true,
-                filled: true,
-                fillColor: isDark ? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                  borderSide: BorderSide.none,
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Cari agenda, ruangan, divisi...',
+                    hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
+                    isDense: true,
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                      icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        _searchController.clear();
+                      },
+                    )
+                        : null,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                  icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: () { _searchController.clear(); },
-                )
-                    : null,
               ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Fitur filter lanjutan belum diimplementasikan.')),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(
+                    Icons.filter_list,
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 32,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildFilterChip(label: 'Pending', value: 'Pending', theme: theme),
+                _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
+                _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
+                _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
+                _buildFilterChip(label: 'Gas Bumi', value: 'Gas Bumi', theme: theme),
+                _buildFilterChip(label: 'Konservasi Energi', value: 'Konservasi Energi', theme: theme),
+                _buildFilterChip(label: 'Biomasa', value: 'Biomasa', theme: theme),
+                _buildFilterChip(label: 'Energi Angin', value: 'Energi Angin', theme: theme),
+                _buildFilterChip(label: 'Minyak Bumi', value: 'Minyak Bumi', theme: theme),
+              ],
             ),
           ),
+        ],
+                ),
+
+              ),
+
           Divider(height: 1, thickness: 1, color: theme.dividerColor.withOpacity(0.1)),
 
           // --- List Peminjaman (Sekarang menggunakan _filteredBookings) ---
@@ -475,6 +561,34 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     );
   }
 
+  Widget _buildFilterChip({required String label, required String value, required ThemeData theme}) {
+    final bool isSelected = _selectedFilterChip == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6.0),
+      child: FilterChip(
+        label: Text(label),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface.withOpacity(0.8),
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        selected: isSelected,
+        onSelected: (bool selected) {
+          setState(() {
+            _selectedFilterChip = selected ? value : null;
+            _applyFilters();
+          });
+        },
+        selectedColor: theme.colorScheme.primary.withOpacity(0.8),
+        checkmarkColor: theme.colorScheme.onPrimary,
+        backgroundColor: theme.chipTheme.backgroundColor ?? theme.cardColor,
+        side: isSelected ? BorderSide.none : BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+        visualDensity: const VisualDensity(horizontal: 0.0, vertical: -2),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
+      ),
+    );
+  }
 
   Widget _meetingCard(JadwalRapat jadwal) {
     // ... (Fungsi _meetingCard tidak berubah)
