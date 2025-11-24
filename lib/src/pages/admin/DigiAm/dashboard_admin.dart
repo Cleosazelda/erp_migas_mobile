@@ -346,6 +346,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           builder: (_) => HomePage(
                             firstName: widget.firstName,
                             lastName: widget.lastName,
+                            isAdmin: true,
                           ),
                         ),
                       ),
@@ -374,25 +375,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _logout(context);
-                  },
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text("Logout"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
+             
             ],
           ),
         ),

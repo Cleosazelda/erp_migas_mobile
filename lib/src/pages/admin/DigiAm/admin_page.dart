@@ -373,7 +373,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             indicatorColor: Colors.green,
             tabs: const [
               Tab(text: "Ruang Rapat"),
-              Tab(text: "List Peminjaman"),
+              Tab(text: "Daftar Peminjaman"),
             ],
           ),
         ),
@@ -453,21 +453,21 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         children: [
           Row(
             children: [
-              Expanded(child: _dateButton("< Prev", () {
+              Expanded(child: _dateButton("< Sebelumnya", () {
                 if (mounted) setState(() {
                   _selectedDate = _selectedDate.subtract(const Duration(days: 1));
                   _applyFilters();
                 });
               })),
               const SizedBox(width: 10),
-              Expanded(child: _dateButton("Today", () {
+              Expanded(child: _dateButton("Hari Ini", () {
                 if (mounted) setState(() {
                   _selectedDate = DateTime.now();
                   _applyFilters();
                 });
               })),
               const SizedBox(width: 10),
-              Expanded(child: _dateButton("Next >", () {
+              Expanded(child: _dateButton("Berikutnya >", () {
                 if (mounted) setState(() {
                   _selectedDate = _selectedDate.add(const Duration(days: 1));
                   _applyFilters();
@@ -559,7 +559,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
-                      _buildFilterChip(label: 'Pending', value: 'Pending', theme: theme),
+                      _buildFilterChip(label: 'Diproses', value: 'Diproses', theme: theme),
                       _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
                       _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
                       _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
@@ -592,7 +592,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                         children: [
                           const Icon(Icons.error_outline, color: Colors.red, size: 40),
                           const SizedBox(height: 10),
-                          Text("Gagal memuat list peminjaman: ${snapshot.error.toString().replaceFirst('Exception: ', '')}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                          Text("Gagal memuat Daftar peminjaman: ${snapshot.error.toString().replaceFirst('Exception: ', '')}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
                           const SizedBox(height: 10),
                           ElevatedButton(onPressed: _loadJadwalAndInitializeFilter, child: const Text("Coba Lagi"))
                         ],
