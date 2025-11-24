@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'admin/DigiAm/dashboard_admin.dart';
-import '../../services/api_service.dart';
+import 'home_page.dart';import '../../services/api_service.dart';
 import '../erp.dart';
 
 class LoginPage extends StatefulWidget {
@@ -39,29 +37,17 @@ class _LoginPageState extends State<LoginPage> {
         final role = userData["role"] ?? "user";
 
         // --- NAVIGATION LOGIC BASED ON ROLE ---
-        if (role == "admin") {
-          // Navigate to AdminPage if role is admin
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AdminDashboardPage(
-                firstName: firstName,
-                lastName: lastName,
-              ),
-            ),
-          );
-        } else {
-          // Navigate to HomePage for any other role (e.g., "user")
-          Navigator.pushReplacement(
+        Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => HomePage(
                 firstName: firstName,
                 lastName: lastName,
-              ),
+                isAdmin: role == "admin",
             ),
-          );
-        }
+
+        ),
+    );
         // --- END OF NAVIGATION LOGIC ---
 
       } else {

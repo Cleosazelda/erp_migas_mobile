@@ -237,7 +237,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("Manajemen Aset", style: TextStyle(fontSize: 18, color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
-              Text("Welcome $fullName!", style: TextStyle(fontSize: 12, color: theme.hintColor)),
+              Text("Selamat Datang $fullName!", style: TextStyle(fontSize: 12, color: theme.hintColor)),
             ],
           ),
         ],
@@ -259,7 +259,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
         labelColor: Colors.green,
         unselectedLabelColor: Colors.grey,
         indicatorColor: Colors.green,
-        tabs: const [ Tab(text: "Ruang Rapat"), Tab(text: "List Peminjaman") ],
+        tabs: const [ Tab(text: "Ruang Rapat"), Tab(text: "Daftar Peminjaman") ],
       ),
     );
   }
@@ -283,8 +283,8 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
               _buildSectionTitle(context, "Layanan Umum"),
               _buildSidebarItem(
                 context: context,
-                imagePath: "assets/images/DigiAm/dashboard_logo.png",
-                title: "Dashboard",
+                imagePath: "assets/images/home.png",
+                title: "Beranda",
                 isSelected: false,
                 onTap: () => Navigator.pushReplacement(
                   context,
@@ -462,7 +462,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "DigiAM",
+                      "Aplikasi DigiAm",
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.hintColor,
                       ),
@@ -544,11 +544,11 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
         children: [
           Row(
             children: [
-              Expanded(child: _dateButton("< Prev", () => _onDateChanged(selectedDate.subtract(const Duration(days: 1))))),
+              Expanded(child: _dateButton("< Sebelumnya", () => _onDateChanged(selectedDate.subtract(const Duration(days: 1))))),
               const SizedBox(width: 10),
-              Expanded(child: _dateButton("Today", () => _onDateChanged(DateTime.now()))),
+              Expanded(child: _dateButton("Hari Ini", () => _onDateChanged(DateTime.now()))),
               const SizedBox(width: 10),
-              Expanded(child: _dateButton("Next >", () => _onDateChanged(selectedDate.add(const Duration(days: 1))))),
+              Expanded(child: _dateButton("Berikutnya >", () => _onDateChanged(selectedDate.add(const Duration(days: 1))))),
             ],
           ),
           const SizedBox(height: 16),
@@ -653,7 +653,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _buildFilterChip(label: 'Pending', value: 'Pending', theme: theme),
+                _buildFilterChip(label: 'Diproses', value: 'Diproses', theme: theme),
                 _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
                 _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
                 _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
@@ -762,7 +762,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     switch (jadwal.status) {
       case 1:
         statusColor = Colors.orange;
-        statusText = 'PENDING';
+        statusText = 'DIPROSES';
         break;
       case 2:
         statusColor = Colors.green;

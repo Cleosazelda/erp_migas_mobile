@@ -15,6 +15,7 @@ import '../../../models/jadwal_model.dart';
 import '../../DigiAm/tambah_jadwal_page.dart';
 // ---------------------------------------------
 import '../../../erp.dart';
+import '../../home_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final String firstName;
@@ -300,7 +301,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                   ),
                   Text(
-                    "Selamat Datang Admin!",
+                    "Selamat Datang $fullName!",
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.hintColor,
                       fontSize: 12,
@@ -335,14 +336,31 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     _buildSectionTitle(context, "Layanan Umum"),
                     _buildSidebarItem(
                       context: context,
+                      imagePath: "assets/images/home.png",
+                      title: "Beranda",
+                      index: 0,
+                      isSelected: false,
+                      onTap: () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => HomePage(
+                            firstName: widget.firstName,
+                            lastName: widget.lastName,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    _buildSidebarItem(
+                      context: context,
                       imagePath: "assets/images/DigiAm/dashboard_logo.png",
-                      title: "Dashboard",
+                      title: "Dasbor",
                       index: 0,
                       isSelected: _selectedIndex == 0,
                       onTap: () => _onSelectItem(0, "Manajemen Aset"),
                     ),
 
-                    _buildSidebarItem(
+                        _buildSidebarItem(
                       context: context,
                       imagePath: "assets/images/DigiAm/ruang_rapat_logo.png",
                       title: "Ruang Rapat",
@@ -556,7 +574,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Admin",
+                    "Aplikasi DigiAm",
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.hintColor,
                     ),
@@ -994,9 +1012,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
     // Ambil data dari map, berikan default 0 jika null
     final int total = (statusCounts['total'] is int) ? statusCounts['total'] : (int.tryParse(statusCounts['total']?.toString() ?? '0') ?? 0);
-    final int pending = (statusCounts['pending'] is int) ? statusCounts['pending'] : (int.tryParse(statusCounts['pending']?.toString() ?? '0') ?? 0);
-    final int approved = (statusCounts['approved'] is int) ? statusCounts['approved'] : (int.tryParse(statusCounts['approved']?.toString() ?? '0') ?? 0);
-    final int rejected = (statusCounts['rejected'] is int) ? statusCounts['rejected'] : (int.tryParse(statusCounts['rejected']?.toString() ?? '0') ?? 0);
+    final int pending = (statusCounts['diproses'] is int) ? statusCounts['diproses'] : (int.tryParse(statusCounts['pending']?.toString() ?? '0') ?? 0);
+    final int approved = (statusCounts['disetujui'] is int) ? statusCounts['disetujui'] : (int.tryParse(statusCounts['approved']?.toString() ?? '0') ?? 0);
+    final int rejected = (statusCounts['ditolak'] is int) ? statusCounts['ditolak'] : (int.tryParse(statusCounts['rejected']?.toString() ?? '0') ?? 0);
 
 
     return Card(
@@ -1025,7 +1043,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Rekap Status Ruang Rapat", // ⭐️ Judul Baru
+                      "Rekap Status Ruang Rapat",
                       style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.white
@@ -1037,9 +1055,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildRekapChip("Total", total, Colors.blue.shade100, Colors.blue.shade900),
-                        _buildRekapChip("Pending", pending, Colors.orange.shade100, Colors.orange.shade900),
-                        _buildRekapChip("Approved", approved, Colors.green.shade100, Colors.green.shade900),
-                        _buildRekapChip("Rejected", rejected, Colors.red.shade100, Colors.red.shade900),
+                        _buildRekapChip("Diproses", pending, Colors.orange.shade100, Colors.orange.shade900),
+                        _buildRekapChip("Disetujui", approved, Colors.green.shade100, Colors.green.shade900),
+                        _buildRekapChip("Ditolak", rejected, Colors.red.shade100, Colors.red.shade900),
                       ],
                     )
                   ],

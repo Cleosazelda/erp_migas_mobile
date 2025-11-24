@@ -62,7 +62,7 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             ListTile(
               leading: Icon(isDark ? Icons.dark_mode : Icons.wb_sunny),
-              title: Text(isDark ? "Light Mode" : "Dark Mode"),
+              title: Text(isDark ? "Mode Terang" : "Mode Gelap"),
               trailing: Switch(
                 value: isDark,
                 activeColor: Colors.green,
@@ -73,7 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text("Profile"),
+              title: const Text("Profil"),
               // 2. Saat ke ProfilePage, kirim data nama yang sudah diterima
               onTap: () => Navigator.push(
                 context,

@@ -5,11 +5,18 @@ import 'profile_page.dart';
 import 'settings_page.dart';
 import 'history_page.dart';
 import 'DigiAm/home_page.dart';
+import 'admin/DigiAm/dashboard_admin.dart';
 
 class HomePage extends StatefulWidget {
   final String firstName;
   final String lastName;
-  const HomePage({super.key, required this.firstName, required this.lastName});
+  final bool isAdmin;
+  const HomePage({
+    super.key,
+    required this.firstName,
+    required this.lastName,
+    this.isAdmin = false,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -24,7 +31,11 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _pages = [
-      _HomeGrid(firstName: widget.firstName, lastName: widget.lastName),
+      _HomeGrid(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        isAdmin: widget.isAdmin,
+      ),
       const HistoryPage(),
       SettingsPage(firstName: widget.firstName, lastName: widget.lastName),
     ];
@@ -60,7 +71,8 @@ class _HomePageState extends State<HomePage> {
 class _HomeGrid extends StatelessWidget {
   final String firstName;
   final String lastName;
-  const _HomeGrid({required this.firstName, required this.lastName});
+  final bool isAdmin;
+  const _HomeGrid({required this.firstName, required this.lastName, this.isAdmin = false});
 
   @override
   Widget build(BuildContext context) {
@@ -133,17 +145,28 @@ class _HomeGrid extends StatelessWidget {
                             image: app["image"]!,
                             onTap: () {
                               if (app["title"] == "DigiAM") {
-                                // --- PERBAIKAN DI SINI ---
-                                // Kirim nama depan dan belakang ke DigiAmHomePage
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => DigiAmHomePage(
-                                      firstName: firstName,
-                                      lastName: lastName,
+                                if (isAdmin) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AdminDashboardPage(
+                                        firstName: firstName,
+                                        lastName: lastName,
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          DigiAmHomePage(
+                                            firstName: firstName,
+                                            lastName: lastName,
+                                          ),
+                                    ),
+                                  );
+                                }
                               } else {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => DetailPage(
                                   title: app["title"]!, subtitle: app["subtitle"]!, image: app["image"]!,
