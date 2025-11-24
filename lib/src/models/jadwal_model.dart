@@ -14,6 +14,7 @@ class JadwalRapat {
   final String perusahaan;
   final String divisi;
   final String ruangan; // Diambil dari 'nama_ruangan' di JSON
+  final String keterangan;
 
   // 2. Constructor untuk membuat objek JadwalRapat di dalam kode.
   JadwalRapat({
@@ -28,6 +29,7 @@ class JadwalRapat {
     required this.perusahaan,
     required this.divisi,
     required this.ruangan,
+    required this.keterangan,
   });
 
   // 3. Fungsi PENTING: 'factory constructor' ini bertugas "menerjemahkan"
@@ -48,6 +50,7 @@ class JadwalRapat {
       perusahaan: json['perusahaan'] ?? 'N/A',
       divisi: json['divisi'] ?? 'N/A',
       ruangan: json['nama_ruangan'] ?? 'N/A', // key 'nama_ruangan' dari JSON
+      keterangan: json['keterangan'] ?? '-',
     );
   }
 }

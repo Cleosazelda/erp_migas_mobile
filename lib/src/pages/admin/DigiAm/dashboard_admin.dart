@@ -1007,7 +1007,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       child: InkWell(
         onTap: () {
           // Aksi: pindah ke tab list (Index 1)
-          _onSelectItem(1, "Admin Ruang Rapat");
+          _onSelectItem(1, "Manajemen Aset");
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),

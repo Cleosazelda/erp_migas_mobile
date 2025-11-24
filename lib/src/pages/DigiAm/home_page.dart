@@ -6,6 +6,7 @@ import '../../../services/jadwal_api_service.dart';
 import '../../../src/models/jadwal_model.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../home_page.dart';
+import '../../erp.dart';
 
 class DigiAmHomePage extends StatefulWidget {
   final String firstName;
@@ -266,42 +267,226 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   Drawer _buildDrawer() {
     // ... (Fungsi _buildDrawer tidak berubah)
     final fullName = "${widget.firstName} ${widget.lastName}";
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          UserAccountsDrawerHeader(
-            accountName: const Text("Selamat Datang"),
-            accountEmail: Text(fullName),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Colors.grey, size: 40),
-            ),
-            decoration: const BoxDecoration(color: Colors.green),
-          ),
-          _drawerItem(
-            Icons.apps_sharp,
-            "Layanan Umum",
-            onTap: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => HomePage(
-                  firstName: widget.firstName,
-                  lastName: widget.lastName,
+      child: Container(
+        color: isDark ? Colors.grey[850] : Colors.white,
+        child: Column(
+            children: [
+            _buildDrawerHeader(context: context, fullName: fullName, isDark: isDark),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _buildSectionTitle(context, "Layanan Umum"),
+              _buildSidebarItem(
+                context: context,
+                imagePath: "assets/images/DigiAm/dashboard_logo.png",
+                title: "Dashboard",
+                isSelected: false,
+                onTap: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HomePage(
+                      firstName: widget.firstName,
+                      lastName: widget.lastName,
+                    ),
+                  ),
                 ),
               ),
+              _buildSidebarItem(
+                context: context,
+                imagePath: "assets/images/DigiAm/ruang_rapat_logo.png",
+                title: "Ruang Rapat",
+                isSelected: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  _tabController.animateTo(0);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildThemeToggle(context),
+            ],
+          ),
+            ),
+            ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarItem({
+    required BuildContext context,
+    required String imagePath,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final color = isSelected ? theme.colorScheme.onSurface : theme.hintColor;
+    final bgColor = isSelected ? (isDark ? Colors.grey[850] : Colors.grey[200]) : Colors.transparent;
+
+    return Material(
+        color: bgColor,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+            child: Row(
+              children: [
+                Image.asset(
+                  imagePath,
+                  width: 22,
+                  height: 22,
+                  color: color,
+                  errorBuilder: (ctx, e, st) => Icon(Icons.error, color: Colors.red, size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+          ),
+          ),
+        ),
+    );
+  }
+
+  Widget _buildThemeToggle(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[800] : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
             ),
           ),
-          _drawerItem(
-            Icons.meeting_room,
-            "Ruang Rapat",
-            isSelected: true,
-            onTap: () {
-              Navigator.pop(context);
-              _tabController.animateTo(0);
-            },
+          child: ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                final darkMode = mode == ThemeMode.dark;
+                return SwitchListTile(
+                  value: darkMode,
+                  onChanged: (value) {
+                    themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+                  },
+                  title: Text(
+                    'Mode ${darkMode ? 'Gelap' : 'Terang'}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                ),
+              ),
+                  subtitle: Text(
+                    'Sesuaikan tampilan sidebar',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                  ),
+                  secondary: Icon(
+                    darkMode ? Icons.dark_mode : Icons.light_mode,
+                    color: theme.colorScheme.primary,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                );
+              },
           ),
-        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerHeader({
+    required BuildContext context,
+    required String fullName,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+
+    return SafeArea(
+        bottom: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[850] : Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? theme.colorScheme.surface : theme.colorScheme.surfaceVariant,
+
+              ),
+          ),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: isDark ? Colors.white.withOpacity(0.2) : Colors.grey[850]!.withOpacity(0.2),
+                child: Padding(
+                  padding: const EdgeInsets.all(6.0),
+                  child: Image.asset(
+                    "assets/images/logo.png",
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.account_circle,
+                      size: 38,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName.trim().isEmpty ? "Pengguna" : fullName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "DigiAM",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+    );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+      child: Text(
+        title,
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.hintColor,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -396,18 +581,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     }
   }
 
-  ListTile _drawerItem(IconData icon, String title, {bool isSelected = false, VoidCallback? onTap}) {
-    // ... (Fungsi _drawerItem tidak berubah)
-    final theme = Theme.of(context);
-    final color = isSelected ? Colors.green : theme.colorScheme.onSurface;
 
-    return ListTile(
-      title: Text(title, style: TextStyle(color: color, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-      leading: Icon(icon, color: isSelected ? Colors.green : Colors.grey.shade600),
-      tileColor: isSelected ? Colors.green.shade50 : null,
-      onTap: onTap,
-    );
-  }
 
   ElevatedButton _dateButton(String label, VoidCallback onPressed) {
     // ... (Fungsi _dateButton tidak berubah)
@@ -470,22 +644,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                 ),
               ),
               const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur filter lanjutan belum diimplementasikan.')),
-                  );
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(
-                    Icons.filter_list,
-                    color: theme.colorScheme.primary,
-                    size: 24,
-                  ),
-                ),
-              ),
+
             ],
           ),
           const SizedBox(height: 10),
@@ -544,13 +703,20 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                   // Tampilkan list berdasarkan _filteredBookings
                   return RefreshIndicator(
                     onRefresh: () async => _reloadData(),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
                       itemCount: _filteredBookings.length, // Gunakan list yg sudah difilter
                       itemBuilder: (context, index) {
                         final jadwal = _filteredBookings[index]; // Gunakan list yg sudah difilter
-                        return _meetingCard(jadwal);
+                        return _buildBookingListItem(jadwal, theme);
                       },
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: theme.dividerColor.withOpacity(0.3),
+                        indent: 16,
+                        endIndent: 16,
+                      ),
                     ),
                   );
                 }
@@ -590,62 +756,150 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     );
   }
 
-  Widget _meetingCard(JadwalRapat jadwal) {
-    // ... (Fungsi _meetingCard tidak berubah)
-    final time = "${jadwal.jamMulai.substring(0, 5)} - ${jadwal.jamSelesai.substring(0, 5)}";
-    final theme = Theme.of(context);
+  Widget _buildBookingListItem(JadwalRapat jadwal, ThemeData theme) {
+    Color statusColor;
+    String statusText;
+    switch (jadwal.status) {
+      case 1:
+        statusColor = Colors.orange;
+        statusText = 'PENDING';
+        break;
+      case 2:
+        statusColor = Colors.green;
+        statusText = 'DISETUJUI';
+        break;
+      case 3:
+        statusColor = Colors.red;
+        statusText = 'DITOLAK';
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusText = '???';
+    }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    final timeRange = _formatTimeRange(jadwal.jamMulai, jadwal.jamSelesai);
+    final durationString = _calculateDuration(jadwal.jamMulai, jadwal.jamSelesai);
+    final bool isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Material(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        elevation: isDark ? 0 : 2,
+        borderRadius: BorderRadius.circular(12),
+        shadowColor: theme.shadowColor.withOpacity(0.08),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+          Expanded(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    jadwal.ruangan,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
-                    overflow: TextOverflow.ellipsis,
+            children: [
+              Text(
+                "${jadwal.agenda}",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(isDark ? 0.25 : 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: statusColor.withOpacity(0.5), width: 0.6),
+                    ),
+                    child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: jadwal.status == 2 ? Colors.green : (jadwal.status == 1 ? Colors.orange : Colors.red),
-                    borderRadius: BorderRadius.circular(12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(isDark ? 0.22 : 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people_alt_outlined, size: 14, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text("${jadwal.jumlahPeserta} peserta", style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                      jadwal.status == 2 ? 'DISETUJUI' : (jadwal.status == 1 ? 'PENDING' : 'DITOLAK'),
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)
+                ],
+              ),
+            ],
+          ),
                   ),
-                ),
-              ],
+            ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16, color: theme.hintColor),
-                const SizedBox(width: 8),
-                Text("${DateFormat('dd/MM/yyyy').format(jadwal.tanggal)} | $time", style: TextStyle(color: theme.hintColor, fontSize: 14)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(jadwal.agenda, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface)),
-            const SizedBox(height: 8),
-            Text("${jadwal.jumlahPeserta} Org", style: TextStyle(color: theme.hintColor, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text("Peminjam: ${jadwal.pic}", style: TextStyle(color: theme.hintColor, fontSize: 14)),
-            Text(jadwal.divisi, style: TextStyle(color: theme.hintColor, fontSize: 14)),
-            Text(jadwal.perusahaan, style: TextStyle(color: theme.hintColor, fontSize: 14)),
-          ],
+              const SizedBox(height: 12),
+              _buildDetailRowList(
+                  null,
+                  "Tanggal Peminjaman : ${DateFormat('dd-MM-yyyy - HH:mm', 'id_ID').format(jadwal.tanggal)}",
+                  theme),
+              _buildDetailRowList(
+                  null,
+                  "Waktu : $timeRange ($durationString)",
+                  theme),
+              _buildDetailRowList(null, "Keterangan : ${jadwal.ruangan}", theme),
+              _buildDetailRowList(null, "PIC : ${jadwal.pic}", theme),
+              _buildDetailRowList(null, jadwal.divisi, theme),
+            ],
+          ),
         ),
       ),
     );
+  }
+  String _calculateDuration(String startTime, String endTime) {
+    try {
+      final start = DateFormat("HH:mm:ss").parseStrict(startTime);
+      final end = DateFormat("HH:mm:ss").parseStrict(endTime);
+      final duration = end.difference(start);
+      if (duration.isNegative) return "Invalid";
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes % 60;
+      List<String> parts = [];
+      if (hours > 0) parts.add("$hours jam");
+      if (minutes > 0) parts.add("$minutes mnt");
+      return parts.isEmpty ? "0 mnt" : parts.join(" ");
+    } catch (e) {
+      print("Error calculating duration ($startTime - $endTime): $e");
+      return "-";
+    }
+  }
+
+  Widget _buildDetailRowList(IconData? icon, String text, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor, fontSize: 13),
+      ),
+    );
+  }
+
+  String _formatTimeRange(String startTime, String endTime) {
+    if (startTime.length < 5 || endTime.length < 5) {
+      print("Warning: Invalid time format received '$startTime' - '$endTime'");
+      return "$startTime - $endTime";
+    }
+    try {
+      String start = startTime.substring(0, 5);
+      String end = endTime.substring(0, 5);
+      return "$start - $end";
+    } catch (e) {
+      print("Error formatting time range ($startTime - $endTime): $e");
+      return "$startTime - $endTime";
+    }
   }
 }
