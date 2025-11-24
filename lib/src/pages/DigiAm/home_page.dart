@@ -122,7 +122,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     // 3. Filter berdasarkan chip yang dipilih (status/ruangan)
     if (_selectedFilterChip != null) {
       switch (_selectedFilterChip) {
-        case 'Pending':
+        case 'Diproses':
           tempFiltered = tempFiltered.where((j) => j.status == 1).toList();
           break;
         case 'Disetujui':
@@ -274,44 +274,45 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       child: Container(
         color: isDark ? Colors.grey[850] : Colors.white,
         child: Column(
-            children: [
+          children: [
             _buildDrawerHeader(context: context, fullName: fullName, isDark: isDark),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              _buildSectionTitle(context, "Layanan Umum"),
-              _buildSidebarItem(
-                context: context,
-                imagePath: "assets/images/home.png",
-                title: "Beranda",
-                isSelected: false,
-                onTap: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => HomePage(
-                      firstName: widget.firstName,
-                      lastName: widget.lastName,
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildSectionTitle(context, "Layanan Umum"),
+                  _buildSidebarItem(
+                    context: context,
+                    imagePath: "assets/images/home.png",
+                    title: "Beranda",
+                    isSelected: false,
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HomePage(
+                          firstName: widget.firstName,
+                          lastName: widget.lastName,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  _buildSidebarItem(
+                    context: context,
+                    imagePath: "assets/images/DigiAm/ruang_rapat_logo.png",
+                    title: "Ruang Rapat",
+                    isSelected: true,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _tabController.animateTo(0);
+                      _tabController.animateTo(0);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildThemeToggle(context),
+                ],
               ),
-              _buildSidebarItem(
-                context: context,
-                imagePath: "assets/images/DigiAm/ruang_rapat_logo.png",
-                title: "Ruang Rapat",
-                isSelected: true,
-                onTap: () {
-                  Navigator.pop(context);
-                  _tabController.animateTo(0);
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildThemeToggle(context),
-            ],
-          ),
             ),
-            ],
+          ],
         ),
       ),
     );
@@ -330,36 +331,36 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     final bgColor = isSelected ? (isDark ? Colors.grey[850] : Colors.grey[200]) : Colors.transparent;
 
     return Material(
-        color: bgColor,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-            child: Row(
-              children: [
-                Image.asset(
-                  imagePath,
-                  width: 22,
-                  height: 22,
-                  color: color,
-                  errorBuilder: (ctx, e, st) => Icon(Icons.error, color: Colors.red, size: 22),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+      color: bgColor,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+          child: Row(
+            children: [
+              Image.asset(
+                imagePath,
+                width: 22,
+                height: 22,
+                color: color,
+                errorBuilder: (ctx, e, st) => Icon(Icons.error, color: Colors.red, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-          ),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 
@@ -370,41 +371,41 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[800] : Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
-            ),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[800] : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
           ),
-          child: ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeNotifier,
-              builder: (context, mode, _) {
-                final darkMode = mode == ThemeMode.dark;
-                return SwitchListTile(
-                  value: darkMode,
-                  onChanged: (value) {
-                    themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
-                  },
-                  title: Text(
-                    'Mode ${darkMode ? 'Gelap' : 'Terang'}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+        ),
+        child: ValueListenableBuilder<ThemeMode>(
+          valueListenable: themeNotifier,
+          builder: (context, mode, _) {
+            final darkMode = mode == ThemeMode.dark;
+            return SwitchListTile(
+              value: darkMode,
+              onChanged: (value) {
+                themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+              },
+              title: Text(
+                'Mode ${darkMode ? 'Gelap' : 'Terang'}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-                  subtitle: Text(
-                    'Sesuaikan tampilan sidebar',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
-                  ),
-                  secondary: Icon(
-                    darkMode ? Icons.dark_mode : Icons.light_mode,
-                    color: theme.colorScheme.primary,
-                  ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                );
-              },
-          ),
+              subtitle: Text(
+                'Sesuaikan tampilan sidebar',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+              ),
+              secondary: Icon(
+                darkMode ? Icons.dark_mode : Icons.light_mode,
+                color: theme.colorScheme.primary,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            );
+          },
+        ),
       ),
     );
   }
@@ -417,62 +418,62 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     final theme = Theme.of(context);
 
     return SafeArea(
-        bottom: false,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[850] : Colors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: isDark ? theme.colorScheme.surface : theme.colorScheme.surfaceVariant,
+      bottom: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[850] : Colors.white,
+          border: Border(
+            bottom: BorderSide(
+              color: isDark ? theme.colorScheme.surface : theme.colorScheme.surfaceVariant,
 
-              ),
+            ),
           ),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: isDark ? Colors.white.withOpacity(0.2) : Colors.grey[850]!.withOpacity(0.2),
-                child: Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: Image.asset(
-                    "assets/images/logo.png",
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.account_circle,
-                      size: 38,
-                      color: theme.colorScheme.primary,
-                    ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: isDark ? Colors.white.withOpacity(0.2) : Colors.grey[850]!.withOpacity(0.2),
+              child: Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: Image.asset(
+                  "assets/images/logo.png",
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.account_circle,
+                    size: 38,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName.trim().isEmpty ? "Pengguna" : fullName,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fullName.trim().isEmpty ? "Pengguna" : fullName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Aplikasi DigiAm",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.hintColor,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Aplikasi DigiAM",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.hintColor,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
@@ -605,70 +606,70 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     return Container(
       color: theme.scaffoldBackgroundColor,
       child: Column(
-          children: [
-      // --- Search Bar (diambil dari admin_page) ---
-      Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      color: isDark ? Colors.grey[850] : Colors.white,
-      child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Cari agenda, ruangan, divisi...',
-                    hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
-                    prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
-                    isDense: true,
-                    filled: true,
-                    fillColor: isDark ? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                      borderSide: BorderSide.none,
+          // --- Search Bar (diambil dari admin_page) ---
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            color: isDark ? Colors.grey[850] : Colors.white,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Cari agenda, ruangan, divisi...',
+                          hintStyle: TextStyle(color: theme.hintColor.withOpacity(0.7), fontSize: 14),
+                          prefixIcon: Icon(Icons.search, color: theme.hintColor, size: 20),
+                          isDense: true,
+                          filled: true,
+                          fillColor: isDark ? Colors.grey[700]?.withOpacity(0.5) : Colors.grey[200],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20.0),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                            icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                              : null,
+                        ),
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                      icon: Icon(Icons.clear, color: theme.hintColor, size: 18),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () {
-                        _searchController.clear();
-                      },
-                    )
-                        : null,
+                    const SizedBox(width: 8),
+
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildFilterChip(label: 'Diproses', value: 'Diproses', theme: theme),
+                      _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
+                      _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
+                      _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
+                      _buildFilterChip(label: 'Gas Bumi', value: 'Gas Bumi', theme: theme),
+                      _buildFilterChip(label: 'Konservasi Energi', value: 'Konservasi Energi', theme: theme),
+                      _buildFilterChip(label: 'Biomasa', value: 'Biomasa', theme: theme),
+                      _buildFilterChip(label: 'Energi Angin', value: 'Energi Angin', theme: theme),
+                      _buildFilterChip(label: 'Minyak Bumi', value: 'Minyak Bumi', theme: theme),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 32,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildFilterChip(label: 'Diproses', value: 'Diproses', theme: theme),
-                _buildFilterChip(label: 'Disetujui', value: 'Disetujui', theme: theme),
-                _buildFilterChip(label: 'Ditolak', value: 'Ditolak', theme: theme),
-                _buildFilterChip(label: 'Energi Matahari', value: 'Energi Matahari', theme: theme),
-                _buildFilterChip(label: 'Gas Bumi', value: 'Gas Bumi', theme: theme),
-                _buildFilterChip(label: 'Konservasi Energi', value: 'Konservasi Energi', theme: theme),
-                _buildFilterChip(label: 'Biomasa', value: 'Biomasa', theme: theme),
-                _buildFilterChip(label: 'Energi Angin', value: 'Energi Angin', theme: theme),
-                _buildFilterChip(label: 'Minyak Bumi', value: 'Minyak Bumi', theme: theme),
               ],
             ),
-          ),
-        ],
-                ),
 
-              ),
+          ),
 
           Divider(height: 1, thickness: 1, color: theme.dividerColor.withOpacity(0.1)),
 
@@ -793,69 +794,70 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-          Expanded(
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "${jadwal.agenda}",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(isDark ? 0.25 : 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: statusColor.withOpacity(0.5), width: 0.6),
-                    ),
-                    child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(isDark ? 0.22 : 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.people_alt_outlined, size: 14, color: theme.colorScheme.primary),
-                        const SizedBox(width: 6),
-                        Text("${jadwal.jumlahPeserta} peserta", style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                        Text(
+                          "${jadwal.agenda}",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(isDark ? 0.25 : 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: statusColor.withOpacity(0.5), width: 0.6),
+                              ),
+                              child: Text(statusText, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(isDark ? 0.22 : 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.people_alt_outlined, size: 14, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 6),
+                                  Text("${jadwal.jumlahPeserta} peserta", style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
+          const SizedBox(height: 12),
+          _buildDetailRowList(null,
+              "${DateFormat('MM-dd-yyyy', 'id_ID').format(jadwal.tanggal)}", theme),
+          _buildDetailRowList(null,
+              "PIC : ${jadwal.pic}", theme),
+          _buildDetailRowList(null,
+              jadwal.divisi, theme),
+          _buildDetailRowList(null,
+              "Ruangan : ${jadwal.ruangan}", theme),
+          _buildDetailRowList(null,
+              "Waktu : $timeRange ($durationString)", theme),
+          _buildDetailRowList(null,
+              "Keterangan : ${jadwal.keterangan}", theme),
             ],
-          ),
-                  ),
-            ],
-            ),
-              const SizedBox(height: 12),
-              _buildDetailRowList(null,
-                  "${DateFormat('MM-dd-yyyy', 'id_ID').format(jadwal.tanggal)}", theme),
-              _buildDetailRowList(null,
-                  "PIC : ${jadwal.pic}", theme),
-              _buildDetailRowList(null,
-                  jadwal.divisi, theme),
-              _buildDetailRowList(null,
-                  "Ruangan : ${jadwal.ruangan}", theme),
-              _buildDetailRowList(null,
-                  "Waktu : $timeRange ($durationString)", theme),
-              _buildDetailRowList(null,
-                  "Keterangan : ${jadwal.keterangan}", theme),
-            ],
+            
           ),
         ),
       ),
