@@ -333,7 +333,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
             value: jam,
             items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: onJam,
-            decoration: InputDecoration(labelText: "$label (Jam)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+            decoration: InputDecoration(labelText: "$label", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
           ),
         ),
         const SizedBox(width: 10),
