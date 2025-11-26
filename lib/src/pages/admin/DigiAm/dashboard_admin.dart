@@ -191,20 +191,35 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Konfirmasi Logout'),
+        backgroundColor: isDark ? theme.dialogBackgroundColor : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Konfirmasi Logout',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text('Apakah Anda yakin ingin keluar?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            child: const Text('Logout'),
           ),
         ],
       ),
@@ -340,16 +355,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       title: "Beranda",
                       index: 0,
                       isSelected: false,
-                      onTap: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => HomePage(
-                            firstName: widget.firstName,
-                            lastName: widget.lastName,
-                            isAdmin: true,
-                          ),
-                        ),
-                      ),
+                      onTap: () {
+                        Navigator.pop(context); // close drawer
+                        Navigator.pop(context); // return to previous HomePage instance
+                      },
                     ),
 
                     _buildSidebarItem(

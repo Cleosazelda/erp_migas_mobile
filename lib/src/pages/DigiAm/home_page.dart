@@ -286,15 +286,10 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                     imagePath: "assets/images/home.png",
                     title: "Beranda",
                     isSelected: false,
-                    onTap: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => HomePage(
-                          firstName: widget.firstName,
-                          lastName: widget.lastName,
-                        ),
-                      ),
-                    ),
+                    onTap: () {
+                      Navigator.pop(context); // close drawer
+                      Navigator.pop(context); // return to previous HomePage instance
+                    },
                   ),
                   _buildSidebarItem(
                     context: context,
