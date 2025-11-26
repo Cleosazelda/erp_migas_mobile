@@ -31,8 +31,25 @@ class _LoginPageState extends State<LoginPage> {
       // Check for success and user data presence
       if (response["status"] == "success" && response["user"] != null) {
         final userData = response["user"];
-        final firstName = userData["first_name"] ?? "User";
-        final lastName = userData["last_name"] ?? "";
+
+        // Gunakan first_name/last_name jika ada, fallback ke nama tunggal
+        String firstName = userData["first_name"] ?? "";
+        String lastName = userData["last_name"] ?? "";
+        final fullName = (userData["nama"] ?? "").toString();
+
+        if (firstName.isEmpty && fullName.isNotEmpty) {
+          final parts = fullName.split(" ");
+          firstName = parts.isNotEmpty ? parts.first : "User";
+          lastName = parts.length > 1 ? parts.sublist(1).join(" ") : "";
+        }
+
+        if (firstName.isEmpty) firstName = "User";
+
+        final email = (userData["email"] ?? "").toString();
+        final division = (userData["division"] ?? userData["divisi"] ?? "").toString();
+        final company =
+        (userData["company"] ?? userData["perusahaan"] ?? userData["company_name"] ?? "").toString();
+
         // Extract the role, default to "user" if not present
         final role = userData["role"] ?? "user";
 
@@ -43,6 +60,9 @@ class _LoginPageState extends State<LoginPage> {
               builder: (context) => HomePage(
                 firstName: firstName,
                 lastName: lastName,
+                email: email,
+                division: division,
+                company: company,
                 isAdmin: role == "admin",
             ),
 

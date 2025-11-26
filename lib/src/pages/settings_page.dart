@@ -8,11 +8,17 @@ class SettingsPage extends StatefulWidget {
   // 1. Tambahkan variabel untuk menerima nama
   final String firstName;
   final String lastName;
+  final String email;
+  final String division;
+  final String company;
 
   const SettingsPage({
     super.key,
     required this.firstName,
     required this.lastName,
+    this.email = '',
+    this.division = '',
+    this.company = '',
   });
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -52,7 +58,10 @@ class _SettingsPageState extends State<SettingsPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text("Settings", style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        title: Text("Settings",
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.bold)),
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 1,
       ),
@@ -81,6 +90,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   builder: (_) => ProfilePage(
                     firstName: widget.firstName,
                     lastName: widget.lastName,
+                    email: widget.email,
+                    division: widget.division,
+                    company: widget.company,
                   ),
                 ),
               ),

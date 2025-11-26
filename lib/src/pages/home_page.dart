@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_card.dart';
-import 'detail_page.dart';
-import 'profile_page.dart';
-import 'settings_page.dart';
-import 'history_page.dart';
 import 'DigiAm/home_page.dart';
 import 'admin/DigiAm/dashboard_admin.dart';
+import 'detail_page.dart';
+import 'history_page.dart';
+import 'profile_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   final String firstName;
   final String lastName;
+  final String email;
+  final String division;
+  final String company;
   final bool isAdmin;
   const HomePage({
     super.key,
     required this.firstName,
     required this.lastName,
+    this.email = '',
+    this.division = '',
+    this.company = '',
     this.isAdmin = false,
   });
 
@@ -24,21 +30,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-
-  late final List<Widget> _pages;
+  final List<HistoryEntry> _history = [];
 
   @override
   void initState() {
     super.initState();
-    _pages = [
-      _HomeGrid(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        isAdmin: widget.isAdmin,
-      ),
-      const HistoryPage(),
-      SettingsPage(firstName: widget.firstName, lastName: widget.lastName),
-    ];
   }
 
   void _onItemTapped(int index) {
@@ -46,6 +42,35 @@ class _HomePageState extends State<HomePage> {
       _selectedIndex = index;
     });
   }
+
+  void _addToHistory(String appName) {
+    setState(() {
+      _history.insert(0, HistoryEntry(appName: appName, accessedAt: DateTime.now()));
+      if (_history.length > 30) {
+        _history.removeLast();
+      }
+    });
+  }
+
+  List<Widget> get _pages => [
+    _HomeGrid(
+      firstName: widget.firstName,
+      lastName: widget.lastName,
+      email: widget.email,
+      division: widget.division,
+      company: widget.company,
+      isAdmin: widget.isAdmin,
+      onOpenApp: _addToHistory,
+    ),
+    HistoryPage(historyItems: _history),
+    SettingsPage(
+      firstName: widget.firstName,
+      lastName: widget.lastName,
+      email: widget.email,
+      division: widget.division,
+      company: widget.company,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +96,21 @@ class _HomePageState extends State<HomePage> {
 class _HomeGrid extends StatelessWidget {
   final String firstName;
   final String lastName;
+  final String email;
+  final String division;
+  final String company;
   final bool isAdmin;
-  const _HomeGrid({required this.firstName, required this.lastName, this.isAdmin = false});
+  final ValueChanged<String> onOpenApp;
+
+  const _HomeGrid({
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+    required this.division,
+    required this.company,
+    this.isAdmin = false,
+    required this.onOpenApp,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -110,8 +148,11 @@ class _HomeGrid extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => ProfilePage(
-                                firstName: firstName, // Kirim data firstName
-                                lastName: lastName,   // Kirim data lastName
+                                firstName: firstName,
+                                lastName: lastName,
+                                email: email,
+                                division: division,
+                                company: company,
                               ),
                             ),
                           ),
@@ -144,6 +185,7 @@ class _HomeGrid extends StatelessWidget {
                             subtitle: app["subtitle"]!,
                             image: app["image"]!,
                             onTap: () {
+                              onOpenApp(app["title"]!);
                               if (app["title"] == "DigiAM") {
                                 if (isAdmin) {
                                   Navigator.push(

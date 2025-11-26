@@ -72,6 +72,32 @@ class ApiService {
     return;
   }
 
+  static Future<Map<String, dynamic>> getProfileDivision() async {
+    try {
+      final response = await http
+          .get(Uri.parse("$baseUrl/profile/divisi"), headers: headers)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.body.isEmpty) {
+        throw Exception("Respons dari server kosong.");
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      throw Exception(data['message'] ?? "Gagal mengambil data profil.");
+    } on TimeoutException {
+      throw Exception("Koneksi ke server time out. Periksa koneksi internet Anda.");
+    } on FormatException {
+      throw Exception("Format respons tidak valid dari server.");
+    } catch (e) {
+      throw Exception("Terjadi kesalahan: $e");
+    }
+  }
+
   // =====================================================
   // =============== RUANG RAPAT APIs ====================
   // =====================================================
