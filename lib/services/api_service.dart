@@ -9,6 +9,12 @@ class ApiService {
   // Token disimpan secara lokal
   static String? _token;
 
+  static void _handleUnauthorized(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      logout();
+      throw Exception("Sesi Anda telah berakhir. Silakan login kembali.");
+    }
+  }
 
   // Setter untuk token
   static void setToken(String token) {

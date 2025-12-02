@@ -82,7 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
             if (_isLoading) const LinearProgressIndicator(minHeight: 3),
             const SizedBox(height: 16),
 
-            // =============== FOTO PROFIL TANPA PICK IMAGE ===============
+
             CircleAvatar(
               radius: 60,
               backgroundColor: Colors.white,
