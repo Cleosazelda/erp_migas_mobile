@@ -6,6 +6,7 @@ import 'detail_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
 import 'settings_page.dart';
+import 'package:erp/src/pages/mansis/home_page.dart';
 
 class HomePage extends StatefulWidget {
   final String firstName;
@@ -214,6 +215,15 @@ class _HomeGrid extends StatelessWidget {
                                     ),
                                   );
                                 }
+                              } else if (app["title"] == "Mansis") {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MansisHomePage(
+                                      userName: "$firstName $lastName".trim(),
+                                    ),
+                                  ),
+                                );
                               } else {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => DetailPage(
                                   title: app["title"]!, subtitle: app["subtitle"]!, image: app["image"]!,
