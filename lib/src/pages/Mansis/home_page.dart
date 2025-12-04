@@ -1,6 +1,7 @@
 import 'package:erp/services/mansis_mock_service.dart';
 import 'package:erp/src/models/mansis_model.dart';
 import 'package:flutter/material.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class MansisHomePage extends StatefulWidget {
   final String userName;
@@ -146,75 +147,138 @@ class _MansisHomePageState extends State<MansisHomePage> {
   }
 
   Widget _buildFilters() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        _buildDropdown(
-          value: _selectedType,
-          items: MansisMockService.documentTypes,
-          icon: Icons.keyboard_arrow_down,
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _selectedType = value);
-          },
-        ),
-        _buildDropdown(
-          value: _selectedPic,
-          items: MansisMockService.picOptions,
-          icon: Icons.keyboard_arrow_down,
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _selectedPic = value);
-          },
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isSmallScreen = constraints.maxWidth < 380;
+
+        if (isSmallScreen) {
+          // HP kecil → dropdown 2 kolom (kanan kiri)
+          return Row(
+            children: [
+              Expanded(
+                child: _buildDropdown(
+                  value: _selectedType,
+                  items: MansisMockService.documentTypes,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedType = value);
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDropdown(
+                  value: _selectedPic,
+                  items: MansisMockService.picOptions,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedPic = value);
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+
+        // HP besar → dropdown atas bawah full width
+        return Column(
+          children: [
+            _buildDropdown(
+              value: _selectedType,
+              items: MansisMockService.documentTypes,
+              onChanged: (value) {
+                if (value != null) setState(() => _selectedType = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildDropdown(
+              value: _selectedPic,
+              items: MansisMockService.picOptions,
+              onChanged: (value) {
+                if (value != null) setState(() => _selectedPic = value);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
+
 
   Widget _buildDropdown({
     required String value,
     required List<String> items,
-    required IconData icon,
     required ValueChanged<String?> onChanged,
   }) {
-    return SizedBox(
-      width: 220,
-      child: DropdownButtonFormField<String>(
+    const selectedColor = Color(0xFF82B43F);
+
+    return DropdownButtonHideUnderline(
+      child: DropdownButton2<String>(
         value: value,
         isExpanded: true,
-        icon: Icon(icon, color: Colors.black54),
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.grey[100],
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+
+        // Tetap jaga agar tombol tertutup selalu putih
+        buttonStyleData: ButtonStyleData(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white, // Pastikan selalu putih di sini
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.black26),
           ),
         ),
+
+        iconStyleData: const IconStyleData(
+          icon: Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+        ),
+
+        dropdownStyleData: DropdownStyleData(
+          maxHeight: 300, // Sesuaikan tinggi popup agar tidak terlalu besar
+          width: 220, // Lebar popup disesuaikan
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(
+            color: Colors.white, // Latar belakang popup tetap putih
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+
+        menuItemStyleData: const MenuItemStyleData(
+          padding: EdgeInsets.zero,
+        ),
+
+        items: items.map((item) {
+          final isSelected = item == value;
+
+          return DropdownMenuItem<String>(
+            value: item,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+              color: isSelected ? selectedColor : Colors.white,
+              child: Text(
+                item,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+
         onChanged: onChanged,
-        items: items
-            .map((item) => DropdownMenuItem<String>(
-          value: item,
-          child: Text(item),
-        ))
-            .toList(),
       ),
     );
   }
+
+
+
+
 
   Widget _buildFloatingButtons() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FloatingActionButton.small(
-          heroTag: 'voiceButton',
-          backgroundColor: Colors.grey[300],
-          onPressed: () {},
-          child: const Icon(Icons.mic_none, color: Colors.grey),
-        ),
-        const SizedBox(height: 12),
         FloatingActionButton(
           heroTag: 'addButton',
           backgroundColor: const Color(0xFF0B8A00),
