@@ -323,88 +323,97 @@ class _MansisHomePageState extends State<MansisHomePage> {
     required List<MansisLookupOption> items,
     required ValueChanged<MansisLookupOption?> onChanged,
   }) {
-              const selectedColor = Color(0xFFF5F6F8);
-              const selectedTextColor = Colors.black87;
-              const defaultTextColor = Colors.black87;
+    const selectedColor = Color(0xFF82B43F);
 
-            return Container(
-            height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                  boxShadow: [
-              BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton2<MansisLookupOption>(
+          value: value,
+          isExpanded: true,
 
-              ],
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton2<MansisLookupOption>(
-                value: value,
-                isExpanded: true,
-                iconStyleData: const IconStyleData(
-                  icon: Icon(Icons.keyboard_arrow_down_rounded,
-                      color: Colors.black87, size: 18),
+          menuItemStyleData: const MenuItemStyleData(
+            padding: EdgeInsets.zero,
+          ),
+
+          selectedItemBuilder: (context) {
+            return items.map((item) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  item.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
+              );
+            }).toList();
+          },
 
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                              dropdownStyleData: DropdownStyleData(
-                                maxHeight: 300,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(color: Colors.grey.shade400),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              menuItemStyleData: const MenuItemStyleData(
-                                padding: EdgeInsets.zero,
-                              ),
-                              items: items.map((item) {
-                                final bool isSelected = item.id == value.id;
+          iconStyleData: const IconStyleData(
+            icon: Icon(Icons.keyboard_arrow_down_rounded,
+                color: Colors.black87, size: 18),
+          ),
 
-                                return DropdownMenuItem(
-                                  value: item,
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding:
-                                    const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? selectedColor : Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      item.name,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color:
-                                        isSelected ? selectedTextColor : defaultTextColor,
-                                      ),
-                                    ),
-                                  ),
-                            );
-                        }).toList(),
-              onChanged: onChanged,
+          dropdownStyleData: DropdownStyleData(
+            padding: EdgeInsets.zero,
+            maxHeight: 300,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
             ),
           ),
-        );
-    }
 
+          // Style saat dropdown terbuka
+          items: items.map((item) {
+            final bool isSelected = item.id == value.id;
 
+            return DropdownMenuItem(
+              value: item,
+              child: Container(
+                width: double.infinity,
 
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? selectedColor : Colors.white,
+                  borderRadius: BorderRadius.zero
+                ),
+                child: Text(
+                  item.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
 
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
 
-
-  Widget _buildFloatingButtons() {
+        Widget _buildFloatingButtons() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
