@@ -17,6 +17,7 @@ class ERP extends StatelessWidget {
         return MaterialApp(
           title: "ERP MUJ",
           theme: ThemeData(
+            fontFamily: 'Montserrat',
             brightness: Brightness.light,
             scaffoldBackgroundColor: Colors.white,  // PUTIH
             cardColor: Colors.white,

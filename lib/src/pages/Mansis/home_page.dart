@@ -487,18 +487,17 @@ class _DocumentCard extends StatelessWidget {
           Wrap(
             spacing: 8,
             children: [
-              _chip(
+              _outlineChip(
                 label: document.category,
-                bg: const Color(0xFFDFF2D8),
-                text: const Color(0xFF82B43F),
+                color: const Color(0xFF82B43F),
               ),
               _chip(
                 label: document.statusLabel,
                 bg: document.isActive
-                    ? const Color(0xFFDFF2D8)
+                    ? const Color(0xFF82B43F)
                     : Colors.grey.shade200,
                 text: document.isActive
-                    ? const Color(0xFF82B43F)
+                    ? Colors.white
                     : Colors.grey.shade600,
               ),
             ],
@@ -580,7 +579,7 @@ class _DocumentCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
@@ -592,6 +591,32 @@ class _DocumentCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _outlineChip({
+    required String label,
+    Color color = const Color(0xFF82B43F),
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color,
+          width: 1,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
 
   Future<void> _openDocument(BuildContext context) async {
     final uri = Uri.tryParse(document.link ?? '');
