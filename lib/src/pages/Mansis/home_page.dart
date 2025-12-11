@@ -323,59 +323,86 @@ class _MansisHomePageState extends State<MansisHomePage> {
     required List<MansisLookupOption> items,
     required ValueChanged<MansisLookupOption?> onChanged,
   }) {
-    const selectedColor = Color(0xFF82B43F);
+              const selectedColor = Color(0xFFF5F6F8);
+              const selectedTextColor = Colors.black87;
+              const defaultTextColor = Colors.black87;
 
-    return DropdownButtonHideUnderline(
-      child: DropdownButton2<MansisLookupOption>(
-        value: value,
-        isExpanded: true,
-        buttonStyleData: ButtonStyleData(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.black26),
-          ),
-        ),
-        iconStyleData: const IconStyleData(
-          icon: Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-        ),
-        dropdownStyleData: DropdownStyleData(
-          maxHeight: 300,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        menuItemStyleData: const MenuItemStyleData(
-          padding: EdgeInsets.zero,
-        ),
-        items: items.map((item) {
-          final isSelected = item.id == value.id;
-          return DropdownMenuItem<MansisLookupOption>(
-            value: item,
-            child: Container(
-              width: double.infinity,
-              padding:
-              const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-              color: isSelected ? selectedColor : Colors.white,
-              child: Text(
-                item.name,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : Colors.black,
-                ),
-              ),
+            return Container(
+            height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+              BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-          );
-        }).toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
+
+              ],
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton2<MansisLookupOption>(
+                value: value,
+                isExpanded: true,
+                iconStyleData: const IconStyleData(
+                  icon: Icon(Icons.keyboard_arrow_down_rounded,
+                      color: Colors.black87, size: 18),
+                ),
+
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                              dropdownStyleData: DropdownStyleData(
+                                maxHeight: 300,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(color: Colors.grey.shade400),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              menuItemStyleData: const MenuItemStyleData(
+                                padding: EdgeInsets.zero,
+                              ),
+                              items: items.map((item) {
+                                final bool isSelected = item.id == value.id;
+
+                                return DropdownMenuItem(
+                                  value: item,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding:
+                                    const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? selectedColor : Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      item.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                        isSelected ? selectedTextColor : defaultTextColor,
+                                      ),
+                                    ),
+                                  ),
+                            );
+                        }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        );
+    }
+
+
+
+
+
 
   Widget _buildFloatingButtons() {
     return Column(
@@ -384,9 +411,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
         FloatingActionButton(
           heroTag: 'addButton',
           backgroundColor: const Color(0xFF0B8A00),
+          shape: const CircleBorder(),
           onPressed: _openAddForm,
-          child: const Icon(Icons.add, color: Colors.white),
+          child: const Icon(Icons.note_add_outlined, size: 28, color: Colors.white),
         ),
+
       ],
     );
   }
@@ -415,104 +444,142 @@ class _DocumentCard extends StatelessWidget {
   final MansisDocument document;
   const _DocumentCard({required this.document});
 
-  Color get _statusColor =>
-      document.isActive ? const Color(0xFF0B8A00) : const Color(0xFF777777);
-  Color get _chipBackground =>
-      document.isActive ? const Color(0xFFDFF2D8) : const Color(0xFFE5E5E5);
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  document.title,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildChip(
-                      document.category,
-                      const Color(0xFFDFF2D8),
-                      _statusColor,
-                    ),
-                    _buildChip(
-                      document.statusLabel,
-                      _chipBackground,
-                      _statusColor,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  document.documentNumber,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'PIC: ${document.pic}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tanggal Pengesahan ${document.approvalDateLabel}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
+          Text(
+            document.title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
+
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 8,
             children: [
-              ElevatedButton(
-                onPressed: document.hasDocumentLink
-                    ? () => _openDocument(context)
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: document.hasDocumentLink
-                      ? const Color(0xFF0B8A00)
-                      : Colors.grey[300],
-                  foregroundColor: document.hasDocumentLink
-                      ? Colors.white
-                      : Colors.grey[700],
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text('Link Dokumen'),
+              _chip(
+                label: document.category,
+                bg: const Color(0xFFDFF2D8),
+                text: const Color(0xFF82B43F),
+              ),
+              _chip(
+                label: document.statusLabel,
+                bg: document.isActive
+                    ? const Color(0xFFDFF2D8)
+                    : Colors.grey.shade200,
+                text: document.isActive
+                    ? const Color(0xFF82B43F)
+                    : Colors.grey.shade600,
               ),
             ],
           ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            document.documentNumber,
+            style: TextStyle(
+              color: Colors.grey.shade800,
+              fontSize: 14,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            'PIC : ${document.pic}',
+            style: TextStyle(
+              color: Colors.grey.shade800,
+              fontSize: 14,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            'Tanggal Pengesahan ${document.approvalDateLabel}',
+            style: TextStyle(
+              color: Colors.grey.shade800,
+              fontSize: 14,
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed:
+              document.hasDocumentLink ? () => _openDocument(context) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF82B43F),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(40),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Link Dokumen',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.open_in_new, color: Colors.white, size: 18),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required Color bg,
+    required Color text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: text,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -527,31 +594,10 @@ class _DocumentCard extends StatelessWidget {
       return;
     }
 
-    final launched =
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-    if (!launched) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal membuka link dokumen')),
       );
     }
-  }
-
-  Widget _buildChip(String label, Color background, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-    );
   }
 }
