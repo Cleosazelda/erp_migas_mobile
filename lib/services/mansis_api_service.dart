@@ -181,4 +181,47 @@ class MansisApiService {
       throw Exception('Gagal menyimpan dokumen: $e');
     }
   }
+
+  /// PATCH /dokumen/{id}
+  /// Mengubah status dokumen menjadi "Aktif" atau "Tidak Aktif"
+  static Future<void> updateDocumentStatus({
+    required int id,
+    required String status,
+  }) async {
+    try {
+      final body = jsonEncode({
+        'status_dokumen': status,
+      });
+
+      final response = await http
+          .patch(
+        Uri.parse('$baseUrl/dokumen/$id'),
+        headers: ApiService.headers,
+        body: body,
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = jsonDecode(response.body);
+
+        if (decoded is Map<String, dynamic>) {
+          final success = decoded['success'];
+          if (success is bool && !success) {
+            throw Exception(decoded['message'] ??
+                'Gagal memperbarui status dokumen (server menolak permintaan).');
+          }
+        }
+
+        return;
+      }
+
+      throw Exception(
+        'Gagal memperbarui status dokumen (Status: ${response.statusCode})',
+      );
+    } on TimeoutException {
+      throw Exception('Permintaan memperbarui status melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal memperbarui status dokumen: $e');
+    }
+  }
 }

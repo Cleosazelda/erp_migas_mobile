@@ -27,10 +27,8 @@ class MansisDocument {
       return value.toString();
     }
 
-    final String statusDokumen = _readString(
-      json['status_dokumen'] ?? json['status'],
-      fallback: '-',
-    );
+    final String statusDokumen =
+    _readString(json['status_dokumen'], fallback: 'Tidak Aktif');
 
     return MansisDocument(
       id: json['id'] is int
@@ -58,9 +56,12 @@ class MansisDocument {
   String get approvalDateLabel =>
       approvalDate != null ? DateFormat('dd MMM yyyy').format(approvalDate!) : '-';
 
-  bool get isActive => status.toLowerCase() == 'aktif';
+  bool get isActive => status.trim().toLowerCase() == 'aktif';
 
-  String get statusLabel => status.isEmpty ? '-' : status;
+
+  String get statusLabel =>
+      status.isEmpty ? 'Tidak Aktif' : status;
+
 
   bool get hasDocumentLink => link != null && link!.isNotEmpty;
 

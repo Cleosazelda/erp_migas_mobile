@@ -25,6 +25,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
   const MansisLookupOption(id: -1, name: 'Semua PIC Dokumen');
 
   bool _isLoading = true;
+  int? _updatingDocumentId;
 
   @override
   void initState() {
@@ -112,6 +113,66 @@ class _MansisHomePageState extends State<MansisHomePage> {
   }
 
   void _applyFilters() => setState(() {});
+
+  Future<void> _changeDocumentStatus(MansisDocument document) async {
+    if (document.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
+      );
+      return;
+    }
+
+    final newStatus = document.isActive ? 'Tidak Aktif' : 'Aktif';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ubah Status Dokumen'),
+        content: Text(
+          'Ubah status "${document.title}" menjadi $newStatus?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0B8A00),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Ubah'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _updatingDocumentId = document.id);
+
+    try {
+      await MansisApiService.updateDocumentStatus(
+        id: document.id!,
+        status: newStatus,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Status diubah menjadi $newStatus.')),
+        );
+        await _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingDocumentId = null);
+    }
+  }
 
   void _openAddForm() {
     if (_masterTypeOptions.isEmpty || _masterPicOptions.isEmpty) {
@@ -236,7 +297,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : _DocumentList(documents: _filteredDocuments),
+                    : _DocumentList(
+                  documents: _filteredDocuments,
+                  onStatusToggle: _changeDocumentStatus,
+                  updatingDocumentId: _updatingDocumentId,
+                ),
               ),
             ],
           ),
@@ -413,7 +478,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
     );
   }
 
-        Widget _buildFloatingButtons() {
+  Widget _buildFloatingButtons() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -432,7 +497,14 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
 class _DocumentList extends StatelessWidget {
   final List<MansisDocument> documents;
-  const _DocumentList({required this.documents});
+  final Future<void> Function(MansisDocument document) onStatusToggle;
+  final int? updatingDocumentId;
+
+  const _DocumentList({
+    required this.documents,
+    required this.onStatusToggle,
+    required this.updatingDocumentId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -444,14 +516,24 @@ class _DocumentList extends StatelessWidget {
       itemCount: documents.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) =>
-          _DocumentCard(document: documents[index]),
+          _DocumentCard(
+            document: documents[index],
+            onStatusToggle: () => onStatusToggle(documents[index]),
+            isUpdating: updatingDocumentId == documents[index].id,
+          ),
     );
   }
 }
 
 class _DocumentCard extends StatelessWidget {
   final MansisDocument document;
-  const _DocumentCard({required this.document});
+  final VoidCallback onStatusToggle;
+  final bool isUpdating;
+  const _DocumentCard({
+    required this.document,
+    required this.onStatusToggle,
+    required this.isUpdating,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -473,13 +555,55 @@ class _DocumentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            document.title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  document.title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              PopupMenuButton<String>(
+                enabled: !isUpdating,
+                onSelected: (_) => onStatusToggle(),
+                itemBuilder: (context) {
+                  final label = document.isActive ? 'Nonaktifkan' : 'Aktifkan';
+                  final color = document.isActive
+                      ? const Color(0xFFD32F2F)
+                      : const Color(0xFF0B8A00);
+
+                  return [
+                    PopupMenuItem<String>(
+                      value: label,
+                      child: Row(
+                        children: [
+                          Icon(
+                            document.isActive
+                                ? Icons.block
+                                : Icons.check_circle_outline,
+                            color: color,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(label, style: TextStyle(color: color)),
+                        ],
+                      ),
+                    ),
+                  ];
+                },
+                icon: isUpdating
+                    ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+                    : const Icon(Icons.more_vert, color: Colors.black87),
+              ),
+            ],
           ),
 
           const SizedBox(height: 10),
@@ -535,38 +659,41 @@ class _DocumentCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed:
-              document.hasDocumentLink ? () => _openDocument(context) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF82B43F),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 18, vertical: 12),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Text(
-                    'Link Dokumen',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.open_in_new, color: Colors.white, size: 18),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        if (document.hasDocumentLink)
+    Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+    ElevatedButton(
+    onPressed:
+    document.hasDocumentLink ? () => _openDocument(context) : null,
+    style: ElevatedButton.styleFrom(
+    backgroundColor: const Color(0xFF82B43F),
+    padding: const EdgeInsets.symmetric(
+    horizontal: 18, vertical: 12),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(40),
+    ),
+    ),
+    child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: const [
+    Text(
+    'Link Dokumen',
+    style: TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w600,
+    ),
+    ),
+    SizedBox(width: 8),
+    Icon(Icons.open_in_new, color: Colors.white, size: 18),
+    ],
+    ),
+    ),
+    ],
+    ),
+    ],
+    ),
     );
   }
 
