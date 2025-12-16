@@ -7,7 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class MansisHomePage extends StatefulWidget {
   final String userName;
-  const MansisHomePage({super.key, this.userName = 'Nama'});
+  final bool isAdmin;
+  const MansisHomePage({super.key, this.userName = 'Nama', this.isAdmin = false});
 
   @override
   State<MansisHomePage> createState() => _MansisHomePageState();
@@ -114,67 +115,71 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
   void _applyFilters() => setState(() {});
 
-  Future<void> _changeDocumentStatus(MansisDocument document) async {
-    if (document.id == null) {
+  void _openAddForm() {
+    if (_masterTypeOptions.isEmpty || _masterPicOptions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
       );
       return;
     }
 
-    final newStatus = document.isActive ? 'Tidak Aktif' : 'Aktif';
-
-    final confirm = await showDialog<bool>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Ubah Status Dokumen'),
-        content: Text(
-          'Ubah status "${document.title}" menjadi $newStatus?',
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0B8A00),
-              foregroundColor: Colors.white,
+        builder: (ctx) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: const Text('Ubah'),
-          ),
-        ],
-      ),
+            child: MansisFormSheet(
+              typeOptions: _masterTypeOptions,
+              picOptions: _masterPicOptions,
+              defaultPic: _defaultPicForForm(),
+              onSubmit: (data) async {
+                try {
+                  await MansisApiService.createDocument(
+                    number: data.number,
+                    name: data.name,
+                    jenisId: data.type.id,
+                    picId: data.pic.id,
+                    approvalDate: data.approvalDate,
+                    status: data.status,
+                    link: data.link,
+                  );
+
+                  if (mounted) {
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Dokumen berhasil disimpan.')),
+                    );
+                    _loadData();
+                  }
+                  return true;
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString())),
+                    );
+                  }
+                  return false;
+                }
+              },
+            ),
+        ),
     );
-
-    if (confirm != true) return;
-
-    setState(() => _updatingDocumentId = document.id);
-
-    try {
-      await MansisApiService.updateDocumentStatus(
-        id: document.id!,
-        status: newStatus,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Status diubah menjadi $newStatus.')),
-        );
-        await _loadData();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    } finally {
-      if (mounted) setState(() => _updatingDocumentId = null);
-    }
   }
 
-  void _openAddForm() {
+  void _openEditForm(MansisDocument document) {
+    if (document.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
+      );
+     return;
+    }
+
     if (_masterTypeOptions.isEmpty || _masterPicOptions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Data master belum tersedia, coba lagi.')),
@@ -197,9 +202,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
           typeOptions: _masterTypeOptions,
           picOptions: _masterPicOptions,
           defaultPic: _defaultPicForForm(),
+          initialData: document,
           onSubmit: (data) async {
             try {
-              await MansisApiService.createDocument(
+              await MansisApiService.updateDocument(
+                id: document.id!,
                 number: data.number,
                 name: data.name,
                 jenisId: data.type.id,
@@ -212,7 +219,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
               if (mounted) {
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dokumen berhasil disimpan.')),
+                  const SnackBar(content: Text('Dokumen berhasil di[perbarui.')),
                 );
                 _loadData();
               }
@@ -231,6 +238,57 @@ class _MansisHomePageState extends State<MansisHomePage> {
     );
   }
 
+  Future<void> _deleteDocument(MansisDocument document) async {
+    if (!widget.isAdmin) return;
+    if (document.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Dokumen'),
+        content: Text('Hapus dokumen "${document.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _updatingDocumentId = document.id);
+    try {
+      await MansisApiService.deleteDocument(document.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Dokumen berhasil dihapus.')),
+        );
+        await _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _updatingDocumentId = null);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -299,8 +357,10 @@ class _MansisHomePageState extends State<MansisHomePage> {
                     ? const Center(child: CircularProgressIndicator())
                     : _DocumentList(
                   documents: _filteredDocuments,
-                  onStatusToggle: _changeDocumentStatus,
+                  onEdit: _openEditForm,
+                  onDelete: widget.isAdmin ? _deleteDocument : null,
                   updatingDocumentId: _updatingDocumentId,
+                  isAdmin: widget.isAdmin,
                 ),
               ),
             ],
@@ -456,8 +516,8 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? selectedColor : Colors.white,
-                  borderRadius: BorderRadius.zero
+                    color: isSelected ? selectedColor : Colors.white,
+                    borderRadius: BorderRadius.zero
                 ),
                 child: Text(
                   item.name,
@@ -497,13 +557,18 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
 class _DocumentList extends StatelessWidget {
   final List<MansisDocument> documents;
-  final Future<void> Function(MansisDocument document) onStatusToggle;
+
   final int? updatingDocumentId;
+  final ValueChanged<MansisDocument> onEdit;
+  final ValueChanged<MansisDocument>? onDelete;
+  final bool isAdmin;
 
   const _DocumentList({
     required this.documents,
-    required this.onStatusToggle,
     required this.updatingDocumentId,
+    required this.onEdit,
+    this.onDelete,
+    this.isAdmin = false,
   });
 
   @override
@@ -518,8 +583,10 @@ class _DocumentList extends StatelessWidget {
       itemBuilder: (context, index) =>
           _DocumentCard(
             document: documents[index],
-            onStatusToggle: () => onStatusToggle(documents[index]),
+            onEdit: () => onEdit(documents[index]),
+            onDelete: onDelete != null ? () => onDelete!(documents[index]) : null,
             isUpdating: updatingDocumentId == documents[index].id,
+            isAdmin: isAdmin,
           ),
     );
   }
@@ -527,12 +594,16 @@ class _DocumentList extends StatelessWidget {
 
 class _DocumentCard extends StatelessWidget {
   final MansisDocument document;
-  final VoidCallback onStatusToggle;
+  final VoidCallback onEdit;
+  final VoidCallback? onDelete;
   final bool isUpdating;
+  final bool isAdmin;
   const _DocumentCard({
     required this.document,
-    required this.onStatusToggle,
+    required this.onEdit,
+    this.onDelete,
     required this.isUpdating,
+    this.isAdmin = false,
   });
 
   @override
@@ -570,30 +641,46 @@ class _DocumentCard extends StatelessWidget {
               ),
               PopupMenuButton<String>(
                 enabled: !isUpdating,
-                onSelected: (_) => onStatusToggle(),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'edit':
+                      onEdit();
+                      break;
+                    case 'delete':
+                      if (onDelete != null) onDelete!();
+                      break;
+                  }
+                },
                 itemBuilder: (context) {
-                  final label = document.isActive ? 'Nonaktifkan' : 'Aktifkan';
-                  final color = document.isActive
-                      ? const Color(0xFFD32F2F)
-                      : const Color(0xFF0B8A00);
-
-                  return [
+                  final items = <PopupMenuEntry<String>>[
                     PopupMenuItem<String>(
-                      value: label,
+                      value: 'edit',
                       child: Row(
-                        children: [
-                          Icon(
-                            document.isActive
-                                ? Icons.block
-                                : Icons.check_circle_outline,
-                            color: color,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(label, style: TextStyle(color: color)),
+                        children: const [
+                          Icon(Icons.edit_outlined, color: Colors.black87),
+                          SizedBox(width: 8),
+                          Text('Edit Dokumen'),
                         ],
                       ),
                     ),
                   ];
+                  if (isAdmin && onDelete != null) {
+                    items.add(const PopupMenuDivider());
+                    items.add(
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Hapus Dokumen', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return items;
                 },
                 icon: isUpdating
                     ? const SizedBox(
@@ -659,41 +746,42 @@ class _DocumentCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-        if (document.hasDocumentLink)
-    Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-    ElevatedButton(
-    onPressed:
-    document.hasDocumentLink ? () => _openDocument(context) : null,
-    style: ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFF82B43F),
-    padding: const EdgeInsets.symmetric(
-    horizontal: 18, vertical: 12),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(40),
-    ),
-    ),
-    child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: const [
-    Text(
-    'Link Dokumen',
-    style: TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w600,
-    ),
-    ),
-    SizedBox(width: 8),
-    Icon(Icons.open_in_new, color: Colors.white, size: 18),
-    ],
-    ),
-    ),
-    ],
-    ),
-    ],
-    ),
+          if (document.hasDocumentLink)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ElevatedButton(
+                  onPressed: document.hasDocumentLink
+                      ? () => _openDocument(context)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF82B43F),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'Link Dokumen',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.open_in_new, color: Colors.white, size: 18),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 

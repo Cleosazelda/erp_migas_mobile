@@ -224,4 +224,195 @@ class MansisApiService {
       throw Exception('Gagal memperbarui status dokumen: $e');
     }
   }
+  /// GET /dokumen/{id}
+  static Future<MansisDocument> fetchDocumentDetail(int id) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/dokumen/$id'), headers: ApiService.headers)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          final data = decoded['data'] ?? decoded;
+          if (data is Map<String, dynamic>) {
+            return MansisDocument.fromJson(data);
+          }
+        }
+        throw Exception('Format respons dokumen tidak valid');
+      }
+
+      throw Exception('Gagal memuat detail dokumen (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan memuat detail dokumen melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal memuat detail dokumen: $e');
+    }
+  }
+
+  /// PATCH /dokumen/{id}
+  static Future<void> updateDocument({
+    required int id,
+    required String number,
+    required String name,
+    required int jenisId,
+    required int picId,
+    required DateTime? approvalDate,
+    required String status,
+    String? link,
+  }) async {
+    try {
+      final body = jsonEncode({
+        'no': number,
+        'nama': name,
+        'id_jenis': jenisId,
+        'id_pic': picId,
+        'tgl_pengesahan': approvalDate != null
+            ? approvalDate.toIso8601String().split('T').first
+            : null,
+        'status_dokumen': status,
+        'link': link,
+      });
+
+      final response = await http
+          .patch(
+        Uri.parse('$baseUrl/dokumen/$id'),
+        headers: ApiService.headers,
+        body: body,
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return;
+      }
+
+      throw Exception('Gagal memperbarui dokumen (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan memperbarui dokumen melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal memperbarui dokumen: $e');
+    }
+  }
+
+  /// DELETE /dokumen/{id}
+  static Future<void> deleteDocument(int id) async {
+    try {
+      final response = await http
+          .delete(Uri.parse('$baseUrl/dokumen/$id'), headers: ApiService.headers)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
+      }
+
+      throw Exception('Gagal menghapus dokumen (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan menghapus dokumen melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal menghapus dokumen: $e');
+    }
+  }
+
+  /// POST /pic
+  static Future<MansisLookupOption> createPic(String name) async {
+    try {
+      final response = await http
+          .post(
+        Uri.parse('$baseUrl/pic'),
+        headers: ApiService.headers,
+        body: jsonEncode({'pic': name}),
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['data'] is Map<String, dynamic>) {
+          return MansisLookupOption.fromJson(decoded['data'] as Map<String, dynamic>);
+        }
+        return MansisLookupOption(id: -1, name: name);
+      }
+
+      throw Exception('Gagal menambahkan PIC (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan menambahkan PIC melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal menambahkan PIC: $e');
+    }
+  }
+
+  /// PATCH /pic/{id}
+  static Future<MansisLookupOption> updatePic({required int id, required String name}) async {
+    try {
+      final response = await http
+          .patch(
+        Uri.parse('$baseUrl/pic/$id'),
+        headers: ApiService.headers,
+        body: jsonEncode({'pic': name}),
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return MansisLookupOption(id: id, name: name);
+      }
+
+      throw Exception('Gagal memperbarui PIC (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan memperbarui PIC melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal memperbarui PIC: $e');
+    }
+  }
+
+  /// POST /jenis-dokumen
+  static Future<MansisLookupOption> createDocumentType(String name) async {
+    try {
+      final response = await http
+          .post(
+        Uri.parse('$baseUrl/jenis-dokumen'),
+        headers: ApiService.headers,
+        body: jsonEncode({'jenis_dokumen': name}),
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['data'] is Map<String, dynamic>) {
+          return MansisLookupOption.fromJson(decoded['data'] as Map<String, dynamic>);
+        }
+        return MansisLookupOption(id: -1, name: name);
+      }
+
+      throw Exception('Gagal menambahkan jenis dokumen (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan menambahkan jenis dokumen melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal menambahkan jenis dokumen: $e');
+    }
+  }
+
+  /// PATCH /jenis-dokumen/{id}
+  static Future<MansisLookupOption> updateDocumentType({
+    required int id,
+    required String name,
+  }) async {
+    try {
+      final response = await http
+          .patch(
+        Uri.parse('$baseUrl/jenis-dokumen/$id'),
+        headers: ApiService.headers,
+        body: jsonEncode({'jenis_dokumen': name}),
+      )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return MansisLookupOption(id: id, name: name);
+      }
+
+      throw Exception('Gagal memperbarui jenis dokumen (Status: ${response.statusCode})');
+    } on TimeoutException {
+      throw Exception('Permintaan memperbarui jenis dokumen melebihi batas waktu.');
+    } catch (e) {
+      throw Exception('Gagal memperbarui jenis dokumen: $e');
+    }
+  }
 }

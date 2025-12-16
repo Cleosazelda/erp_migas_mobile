@@ -221,6 +221,7 @@ class _HomeGrid extends StatelessWidget {
                                   MaterialPageRoute(
                                     builder: (_) => MansisHomePage(
                                       userName: "$firstName $lastName".trim(),
+                                      isAdmin: isAdmin,
                                     ),
                                   ),
                                 );

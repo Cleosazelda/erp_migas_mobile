@@ -2,6 +2,7 @@ import 'package:erp/src/models/mansis_model.dart';
 import 'package:flutter/material.dart';
 
 class MansisFormData {
+  final int? id;
   final String number;
   final String name;
   final MansisLookupOption type;
@@ -11,6 +12,7 @@ class MansisFormData {
   final String? link;
 
   MansisFormData({
+    this.id,
     required this.number,
     required this.name,
     required this.type,
@@ -26,6 +28,7 @@ class MansisFormSheet extends StatefulWidget {
   final List<MansisLookupOption> picOptions;
   final MansisLookupOption defaultPic;
   final Future<bool> Function(MansisFormData data) onSubmit;
+  final MansisDocument? initialData;
 
   const MansisFormSheet({
     super.key,
@@ -33,6 +36,7 @@ class MansisFormSheet extends StatefulWidget {
     required this.picOptions,
     required this.defaultPic,
     required this.onSubmit,
+    this.initialData,
   });
 
   @override
@@ -50,12 +54,14 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
   late MansisLookupOption _selectedPic;
   String _status = 'Aktif';
   bool _isSaving = false;
+  bool get _isEditing => widget.initialData != null;
 
   @override
   void initState() {
     super.initState();
     _selectedType = widget.typeOptions.first;
     _selectedPic = widget.defaultPic;
+    _prefillFromInitialData();
   }
 
   @override
@@ -66,6 +72,56 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
     _dateController.dispose();
     super.dispose();
   }
+
+  void _prefillFromInitialData() {
+    final initial = widget.initialData;
+    if (initial == null) return;
+
+    _numberController.text = initial.documentNumber;
+    _nameController.text = initial.title;
+    _linkController.text = initial.link ?? '';
+    _status = initial.statusLabel;
+    _selectedDate = initial.approvalDate;
+
+    if (_selectedDate != null) {
+      _dateController.text =
+      "${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.year}";
+    }
+
+    _selectedType = _matchOption(
+      widget.typeOptions,
+      initial.typeId,
+      initial.category,
+    );
+
+    _selectedPic = _matchOption(
+      widget.picOptions,
+      initial.picId,
+      initial.pic,
+    );
+  }
+
+  MansisLookupOption _matchOption(
+      List<MansisLookupOption> options,
+      int? targetId,
+      String fallbackName,
+      ) {
+    if (targetId != null) {
+      final match = options.firstWhere(
+            (option) => option.id == targetId,
+        orElse: () => options.first,
+      );
+      if (match.id == targetId) return match;
+    }
+
+    final lowerName = fallbackName.toLowerCase();
+    final byName = options.firstWhere(
+          (option) => option.name.toLowerCase() == lowerName,
+      orElse: () => options.first,
+    );
+    return byName;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +154,30 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
               ),
             ),
             const SizedBox(height: 20),
+            if (_isEditing)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.edit, color: Color(0xFF0B8A00)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Perbarui detail dokumen yang dipilih.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B8A00),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _buildTextField(
               controller: _numberController,
               label: 'Nomor Dokumen',
@@ -209,7 +289,7 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                        : const Text('Simpan'),
+                        : Text(_isEditing ? 'Perbarui' : 'Simpan'),
                   ),
                 ),
               ],
@@ -331,6 +411,7 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
 
     setState(() => _isSaving = true);
     final data = MansisFormData(
+      id: widget.initialData?.id,
       number: _numberController.text.trim(),
       name: _nameController.text.trim(),
       type: _selectedType,

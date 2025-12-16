@@ -2,6 +2,8 @@ import 'package:intl/intl.dart';
 
 class MansisDocument {
   final int? id;
+  final int? typeId;
+  final int? picId;
   final String title;
   final String documentNumber;
   final String pic;
@@ -13,6 +15,8 @@ class MansisDocument {
   const MansisDocument({
     this.id,
     required this.title,
+    this.typeId,
+    this.picId,
     required this.documentNumber,
     required this.pic,
     required this.approvalDate,
@@ -34,6 +38,12 @@ class MansisDocument {
       id: json['id'] is int
           ? json['id'] as int
           : int.tryParse(json['id']?.toString() ?? ''),
+      typeId: json['id_jenis'] is int
+          ? json['id_jenis'] as int
+          : int.tryParse(json['id_jenis']?.toString() ?? ''),
+      picId: json['id_pic'] is int
+          ? json['id_pic'] as int
+          : int.tryParse(json['id_pic']?.toString() ?? ''),
       title: _readString(
         json['nama'] ?? json['title'],
         fallback: 'Untitled Document',
