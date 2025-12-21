@@ -334,9 +334,9 @@ class _MansisHomePageState extends State<MansisHomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_outlined,
-                color: Colors.black87),
+            onPressed: _loadData,
+            icon:
+            const Icon(Icons.refresh_outlined, color: Colors.black87),
           ),
         ],
         titleSpacing: 0,
@@ -368,10 +368,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
       ),
       drawer: _buildDrawer(context),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
             children: [
               _buildSearchField(),
               const SizedBox(height: 12),
@@ -383,30 +384,30 @@ class _MansisHomePageState extends State<MansisHomePage> {
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _loadError != null
-                    ? _ErrorState(
+            if (_isLoading)
+          const Center(child: CircularProgressIndicator())
+    else if (_loadError != null)
+    _ErrorState(
                   message: _loadError!,
                   onRetry: _loadData,
                 )
-                    : _DocumentList(
+                else
+                    _DocumentList(
                   documents: _filteredDocuments,
                   onEdit: widget.isAdmin ? _openEditForm : null,
                   onDelete: widget.isAdmin ? _deleteDocument : null,
                   updatingDocumentId: _updatingDocumentId,
                   isAdmin: widget.isAdmin,
                 ),
-              ),
             ],
           ),
         ),
       ),
       floatingActionButton:
-      _loadError == null ? _buildFloatingButtons() : null,
+      _loadError == null && widget.isAdmin ? _buildFloatingButtons() : null,
     );
   }
+
 
   Drawer _buildDrawer(BuildContext context) {
     final theme = Theme.of(context);
@@ -844,6 +845,8 @@ class _DocumentList extends StatelessWidget {
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: documents.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) =>
