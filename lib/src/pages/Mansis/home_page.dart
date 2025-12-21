@@ -450,7 +450,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
                   ),
                   _buildSidebarItem(
                     context,
-                    assetPath: 'assets/images/mansis.png',
+                    assetPath: 'assets/images/mansis/documents_logo.png',
                     title: 'Dokumen',
                     isSelected: true,
                     onTap: () => Navigator.pop(context),
@@ -460,7 +460,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
                     _buildSectionTitle('Data Master', theme),
                     _buildSidebarItem(
                       context,
-                      assetPath: 'assets/images/dashboard_logo.png',
+                      assetPath: 'assets/images/mansis/pic_logo.png',
                       title: 'Daftar PIC',
                       isSelected: false,
                       onTap: () async {
@@ -476,7 +476,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
                     ),
                     _buildSidebarItem(
                       context,
-                      assetPath: 'assets/images/disposisi.png',
+                      assetPath: 'assets/images/mansis/list_documents.png',
                       title: 'Tipe Dokumen',
                       isSelected: false,
                       onTap: () async {
