@@ -6,6 +6,40 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
+class MansisApiException implements Exception {
+  final String message;
+
+  const MansisApiException(this.message);
+
+  @override
+  String toString() => message;
+}
+
+String _cleanExceptionMessage(Object e) {
+  final message = e.toString();
+  const prefix = 'Exception: ';
+  if (message.startsWith(prefix)) {
+    return message.substring(prefix.length);
+  }
+  return message;
+}
+
+String _readApiMessage(http.Response response) {
+  try {
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      final message = decoded['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+    }
+  } catch (_) {
+    // Ignore parsing errors and fallback to generic message.
+  }
+
+  return '';
+}
+
 class MansisApiService {
   // Pastikan ApiService.baseUrl sudah mengandung prefix /api
   // misal: http://103.165.226.178:8085/api
@@ -132,7 +166,10 @@ class MansisApiService {
         'id_jenis': jenisId,
         'id_pic': picId,
         'tgl_pengesahan': approvalDate != null
-            ? approvalDate.toIso8601String().split('T').first
+            ? approvalDate
+            .toIso8601String()
+            .split('T')
+            .first
             : null,
         'status_dokumen': status,
         'link': link,
@@ -173,15 +210,39 @@ class MansisApiService {
           link: link,
         );
       }
+      final message = _readApiMessage(response);
 
-      throw Exception('Gagal membuat dokumen (Status: ${response.statusCode})');
+      if (response.statusCode == 401) {
+        throw MansisApiException(
+          message.isNotEmpty
+              ? _cleanExceptionMessage(message)
+              : 'Sesi Anda telah berakhir. Silakan login kembali lalu coba lagi.',
+        );
+      }
+
+      if (response.statusCode == 403) {
+        throw MansisApiException(
+          message.isNotEmpty
+              ? _cleanExceptionMessage(message)
+              : 'Akses Anda terbatas untuk menambahkan dokumen. Hubungi admin jika membutuhkan izin.',
+        );
+      }
+
+      throw MansisApiException(
+        message.isNotEmpty
+            ? _cleanExceptionMessage(message)
+            : 'Gagal membuat dokumen (Status: ${response.statusCode})',
+      );
     } on TimeoutException {
-      throw Exception('Permintaan menyimpan dokumen melebihi batas waktu.');
+      throw const MansisApiException(
+        'Permintaan menyimpan dokumen melebihi batas waktu.',
+      );
     } catch (e) {
-      throw Exception('Gagal menyimpan dokumen: $e');
+      throw MansisApiException(
+        'Gagal menyimpan dokumen: ${_cleanExceptionMessage(e)}',
+      );
     }
   }
-
   /// PATCH /dokumen/{id}
   /// Mengubah status dokumen menjadi "Aktif" atau "Tidak Aktif"
   static Future<void> updateDocumentStatus({

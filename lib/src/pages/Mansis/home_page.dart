@@ -28,6 +28,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
   const MansisLookupOption(id: -1, name: 'Semua PIC Dokumen');
 
   bool _isLoading = true;
+  String? _loadError;
   int? _updatingDocumentId;
 
   @override
@@ -44,17 +45,34 @@ class _MansisHomePageState extends State<MansisHomePage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
-      final results = await Future.wait([
-        MansisApiService.fetchDocuments(),
-        MansisApiService.fetchDocumentTypes(),
-        MansisApiService.fetchPicOptions(),
-      ]);
+      final documents = await MansisApiService.fetchDocuments();
+      List<MansisLookupOption> types = const [];
+      List<MansisLookupOption> pics = const [];
 
-      final documents = results[0] as List<MansisDocument>;
-      final types = results[1] as List<MansisLookupOption>;
-      final pics = results[2] as List<MansisLookupOption>;
+      try {
+        types = await MansisApiService.fetchDocumentTypes();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memuat jenis dokumen: $e')),
+          );
+        }
+      }
+
+      try {
+        pics = await MansisApiService.fetchPicOptions();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memuat PIC dokumen: $e')),
+          );
+        }
+      }
 
       setState(() {
         _documents = documents;
@@ -69,7 +87,10 @@ class _MansisHomePageState extends State<MansisHomePage> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.toString())));
       }
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Gagal memuat dokumen. Silakan coba lagi.';
+      });
     }
   }
 
@@ -118,59 +139,58 @@ class _MansisHomePageState extends State<MansisHomePage> {
   void _applyFilters() => setState(() {});
 
   void _openAddForm() {
-    if (_masterTypeOptions.isEmpty || _masterPicOptions.isEmpty) {
+    if (!widget.isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(content: Text('Data master belum tersedia, coba lagi.')),
+        const SnackBar(content: Text('Hanya admin yang dapat menambahkan dokumen.')),
       );
       return;
     }
     showModalBottomSheet<void>(
       context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
         ),
-        builder: (ctx) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-          child: MansisFormSheet(
-            typeOptions: _masterTypeOptions,
-            picOptions: _masterPicOptions,
-            defaultPic: _defaultPicForForm(),
-            onSubmit: (data) async {
-              try {
-                  await MansisApiService.createDocument(
-                    number: data.number,
-                    name: data.name,
-                    jenisId: data.type.id,
-                    picId: data.pic.id,
-                    approvalDate: data.approvalDate,
-                    status: data.status,
-                    link: data.link,
-                  );
+        child: MansisFormSheet(
+          typeOptions: _masterTypeOptions,
+          picOptions: _masterPicOptions,
+          defaultPic: _defaultPicForForm(),
+          onSubmit: (data) async {
+            try {
+              await MansisApiService.createDocument(
+                number: data.number,
+                name: data.name,
+                jenisId: data.type.id,
+                picId: data.pic.id,
+                approvalDate: data.approvalDate,
+                status: data.status,
+                link: data.link,
+              );
 
-                  if (mounted) {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Dokumen berhasil disimpan.')),
-                    );
-                    _loadData();
-                  }
-                  return true;
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
-                    );
-                  }
-                  return false;
-                }
-              },
-            ),
+              if (mounted) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Dokumen berhasil disimpan.')),
+                );
+                _loadData();
+              }
+              return true;
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString())),
+                );
+              }
+              return false;
+            }
+          },
         ),
+      ),
     );
   }
 
@@ -185,7 +205,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
       );
-     return;
+      return;
     }
 
     if (_masterTypeOptions.isEmpty || _masterPicOptions.isEmpty) {
@@ -366,6 +386,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
+                    : _loadError != null
+                    ? _ErrorState(
+                  message: _loadError!,
+                  onRetry: _loadData,
+                )
                     : _DocumentList(
                   documents: _filteredDocuments,
                   onEdit: widget.isAdmin ? _openEditForm : null,
@@ -378,7 +403,8 @@ class _MansisHomePageState extends State<MansisHomePage> {
           ),
         ),
       ),
-      floatingActionButton: widget.isAdmin ? _buildFloatingButtons() : null,
+      floatingActionButton:
+      _loadError == null ? _buildFloatingButtons() : null,
     );
   }
 
@@ -765,6 +791,35 @@ class _MansisHomePageState extends State<MansisHomePage> {
     );
   }
 }
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Coba lagi'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _DocumentList extends StatelessWidget {
   final List<MansisDocument> documents;
@@ -866,20 +921,20 @@ class _DocumentCard extends StatelessWidget {
                   itemBuilder: (context) {
                     final items = <PopupMenuEntry<String>>[];
                     if (onEdit != null) {
-    items.add(
-    PopupMenuItem<String>(
-    value: 'edit',
-    child: Row(
-    children: const [
-    Icon(Icons.edit_outlined, color: Colors.black87),
-    SizedBox(width: 8),
-    Text('Edit Dokumen'),
-    ],
-    ),
-    ),
-    );
+                      items.add(
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.edit_outlined, color: Colors.black87),
+                              SizedBox(width: 8),
+                              Text('Edit Dokumen'),
+                            ],
+                          ),
+                        ),
+                      );
 
-    }
+                    }
                     if (isAdmin && onDelete != null) {
                       if (items.isNotEmpty) items.add(const PopupMenuDivider());
                       items.add(
@@ -906,7 +961,7 @@ class _DocumentCard extends StatelessWidget {
                   )
                       : const Icon(Icons.more_vert, color: Colors.black87),
                 ),
-          ],
+            ],
           ),
           const SizedBox(height: 10),
 
