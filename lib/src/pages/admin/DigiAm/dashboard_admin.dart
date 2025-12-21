@@ -72,6 +72,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   // Tanggal real-time untuk AppBar
   final DateTime _currentDate = DateTime.now();
   final List<String> _months = const ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  late final ScrollController _monthScrollController;
   static const int _firstDashboardYear = 2023;
   late final List<int> _availableYears;
   // ------------------------------------
@@ -81,11 +82,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     super.initState();
     initializeDateFormatting('id_ID', null);
 
+    _monthScrollController = ScrollController();
     // Panggil semua 3 loader data
     _loadDashboardData();   // Data untuk Tab 2 & total ruangan
     _loadAvailableRooms();  // Data real-time Card 1
     _availableYears = _generateAvailableYears();
     _loadDashboardStats();  // Data filterable Card 2 & 3 (pake default _selectedDate)
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedMonth());
+  }
+
+  @override
+  void dispose() {
+    _monthScrollController.dispose();
+    super.dispose();
   }
 
   List<int> _generateAvailableYears() {
@@ -907,6 +917,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       height: 65,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        controller: _monthScrollController,
         physics: const BouncingScrollPhysics(),
         itemCount: _months.length,
         itemBuilder: (context, index) {
@@ -929,6 +940,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   _selectedDate = DateTime(_selectedDate.year, monthNumber, 1);
                   _futureDashboardStats = _fetchDashboardStats(); // WAJIB!
                 });
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedMonth(animated: true
+                ));
               }
 
             },
@@ -936,6 +949,30 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         },
       ),
     );
+  }
+
+  void _scrollToSelectedMonth({bool animated = false}) {
+    if (!_monthScrollController.hasClients) return;
+
+    const double cardWidth = 60;
+    const double cardSpacing = 10;
+    const double itemExtent = cardWidth + cardSpacing;
+
+    final double screenWidth = MediaQuery.of(context).size.width;
+    double targetOffset = itemExtent * (_selectedDate.month - 1) - (screenWidth - itemExtent) / 2;
+
+    final double maxOffset = _monthScrollController.position.maxScrollExtent;
+    targetOffset = targetOffset.clamp(0.0, maxOffset);
+
+    if (animated) {
+      _monthScrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _monthScrollController.jumpTo(targetOffset);
+    }
   }
 
   /// =============================

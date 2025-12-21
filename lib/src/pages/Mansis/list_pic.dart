@@ -121,44 +121,263 @@ class _ListPicPageState extends State<ListPicPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Kelola PIC'),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+        ),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFF1B9C85).withOpacity(0.1),
+              child: const Icon(Icons.people_alt_rounded,
+                  color: Color(0xFF1B9C85)),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Data Master Mansis',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  'Kelola PIC Dokumen',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: _loadData,
+            icon: const Icon(Icons.refresh_outlined, color: Colors.black87),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
         onRefresh: _loadData,
-        child: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: _pics.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final pic = _pics[index];
-            return Card(
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                title: Text(pic.name),
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => _openPicDialog(existing: pic),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderCard(theme),
+              const SizedBox(height: 16),
+              _buildPicList(theme),
+            ],
                 ),
               ),
-            );
-          },
-        ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openPicDialog(),
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFF82B43F),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Tambah PIC'),
       ),
+    );
+  }
+
+  Widget _buildHeaderCard(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1B9C85), Color(0xFF82B43F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.account_circle_outlined,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daftar PIC Dokumen',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Atur penanggung jawab dokumen agar informasi selalu terjaga.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPicList(ThemeData theme) {
+    if (_pics.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.people_outline,
+                color: Colors.grey.shade500, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              'Belum ada PIC terdaftar',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tekan tombol tambah untuk menambahkan PIC baru.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total PIC (${_pics.length})',
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            TextButton.icon(
+              onPressed: () => _openPicDialog(),
+              icon: const Icon(Icons.add_circle_outline, color: Color(0xFF82B43F)),
+              label: const Text(
+                'Tambah',
+                style: TextStyle(color: Color(0xFF82B43F)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ..._pics.map(
+              (pic) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B9C85).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person_outline,
+                        color: Color(0xFF1B9C85)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pic.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Penanggung jawab dokumen',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined,
+                        color: Color(0xFF82B43F)),
+                    onPressed: () => _openPicDialog(existing: pic),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

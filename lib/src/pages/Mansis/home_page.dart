@@ -18,6 +18,9 @@ class MansisHomePage extends StatefulWidget {
 
 class _MansisHomePageState extends State<MansisHomePage> {
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+  GlobalKey<RefreshIndicatorState>();
+  final ScrollController _scrollController = ScrollController();
   List<MansisDocument> _documents = [];
   List<MansisLookupOption> _documentTypes = const [];
   List<MansisLookupOption> _picOptions = const [];
@@ -40,7 +43,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -137,6 +140,15 @@ class _MansisHomePageState extends State<MansisHomePage> {
   }
 
   void _applyFilters() => setState(() {});
+
+  Future<void> _triggerRefresh() async {
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+    await _refreshIndicatorKey.currentState?.show();
+  }
 
   void _openAddForm() {
     if (!widget.isAdmin) {
@@ -334,7 +346,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: _loadData,
+            onPressed: _triggerRefresh,
             icon:
             const Icon(Icons.refresh_outlined, color: Colors.black87),
           ),
@@ -369,9 +381,13 @@ class _MansisHomePageState extends State<MansisHomePage> {
       drawer: _buildDrawer(context),
       body: SafeArea(
         child: RefreshIndicator(
+          key: _refreshIndicatorKey,
           onRefresh: _loadData,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             padding: const EdgeInsets.all(16),
             children: [
               _buildSearchField(),
@@ -653,6 +669,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
             ],
           );
         }
+
 
         return Row(
           children: [
