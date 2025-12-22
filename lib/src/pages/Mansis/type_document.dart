@@ -48,10 +48,15 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
 
   Future<void> _openTypeDialog({MansisLookupOption? existing}) async {
     _typeController.text = existing?.name ?? '';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
         title: Text(existing == null ? 'Tambah Jenis Dokumen' : 'Ubah Jenis Dokumen'),
         content: TextField(
           controller: _typeController,
@@ -124,10 +129,11 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : Colors.white,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: surfaceColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -185,13 +191,6 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
             ],
                 ),
               ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openTypeDialog(),
-        backgroundColor: const Color(0xFF82B43F),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tambah Jenis'),
       ),
     );
   }
@@ -260,12 +259,13 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
   Widget _buildTypeList(ThemeData theme) {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? colorScheme.surface : Colors.white;
     if (_types.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
+          color: cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
           boxShadow: isDark
@@ -329,7 +329,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: colorScheme.surface,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
                 boxShadow: isDark

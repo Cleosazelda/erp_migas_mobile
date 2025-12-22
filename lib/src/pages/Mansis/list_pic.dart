@@ -13,6 +13,7 @@ class _ListPicPageState extends State<ListPicPage> {
   final TextEditingController _picController = TextEditingController();
   bool _isSaving = false;
   bool _isLoading = true;
+  int? _deletingPicId;
   List<MansisLookupOption> _pics = [];
 
   @override
@@ -48,10 +49,15 @@ class _ListPicPageState extends State<ListPicPage> {
 
   Future<void> _openPicDialog({MansisLookupOption? existing}) async {
     _picController.text = existing?.name ?? '';
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
         title: Text(existing == null ? 'Tambah PIC' : 'Ubah PIC'),
         content: TextField(
           controller: _picController,
@@ -124,10 +130,11 @@ class _ListPicPageState extends State<ListPicPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : Colors.white,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: surfaceColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -185,13 +192,6 @@ class _ListPicPageState extends State<ListPicPage> {
             ],
                 ),
               ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openPicDialog(),
-        backgroundColor: const Color(0xFF82B43F),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tambah PIC'),
       ),
     );
   }
@@ -260,12 +260,13 @@ class _ListPicPageState extends State<ListPicPage> {
   Widget _buildPicList(ThemeData theme) {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? colorScheme.surface : Colors.white;
     if (_pics.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
+          color: cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
           boxShadow: isDark
@@ -329,7 +330,7 @@ class _ListPicPageState extends State<ListPicPage> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: colorScheme.surface,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
                 boxShadow: isDark

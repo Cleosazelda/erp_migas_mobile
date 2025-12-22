@@ -157,11 +157,14 @@ class _MansisHomePageState extends State<MansisHomePage> {
       );
       return;
     }
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -214,7 +217,10 @@ class _MansisHomePageState extends State<MansisHomePage> {
       );
       return;
     }
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     if (document.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
@@ -232,7 +238,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -282,7 +288,10 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
   Future<void> _deleteDocument(MansisDocument document) async {
     if (!widget.isAdmin) return;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     if (document.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
@@ -293,6 +302,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
         title: const Text('Hapus Dokumen'),
         content: Text('Hapus dokumen "${document.title}"?'),
         actions: [
@@ -336,10 +346,12 @@ class _MansisHomePageState extends State<MansisHomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: isDark ? theme.scaffoldBackgroundColor : Colors.white,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: surfaceColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: Builder(
@@ -383,7 +395,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
           ],
         ),
       ),
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, surfaceColor: surfaceColor, isDark: isDark),
       body: SafeArea(
         child: RefreshIndicator(
           key: _refreshIndicatorKey,
@@ -425,95 +437,101 @@ class _MansisHomePageState extends State<MansisHomePage> {
         ),
       ),
       floatingActionButton:
-      _loadError == null && widget.isAdmin ? _buildFloatingButtons(colorScheme) : null,
+      _loadError == null && widget.isAdmin
+          ? _buildFloatingButtons(colorScheme)
+          : null,
     );
   }
 
 
-  Drawer _buildDrawer(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Drawer(
-      child: Container(
-        color: colorScheme.surface,
-        child: Column(
-          children: [
-            _buildDrawerHeader(theme, isDark: theme.brightness == Brightness.dark),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildSectionTitle('Navigasi', theme),
-                  _buildSidebarItem(
-                    context,
-                    assetPath: 'assets/images/home.png',
-                    title: 'Beranda',
-                    isSelected: false,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _buildSidebarItem(
-                    context,
-                    assetPath: 'assets/images/mansis/documents_logo.png',
-                    title: 'Dokumen',
-                    isSelected: true,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  if (widget.isAdmin) ...[
-                    const SizedBox(height: 12),
-                    _buildSectionTitle('Data Master', theme),
+    Drawer _buildDrawer(BuildContext context,
+        {required Color surfaceColor, required bool isDark}) {
+      final theme = Theme.of(context);
+      final colorScheme = theme.colorScheme;
+      return Drawer(
+        child: Container(
+          color: surfaceColor,
+          child: Column(
+            children: [
+              _buildDrawerHeader(theme,
+                  surfaceColor: surfaceColor, isDark: isDark),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildSectionTitle('Navigasi', theme),
                     _buildSidebarItem(
                       context,
-                      assetPath: 'assets/images/mansis/pic_logo.png',
-                      title: 'Daftar PIC',
+                      assetPath: 'assets/images/home.png',
+                      title: 'Beranda',
                       isSelected: false,
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ListPicPage(),
-                          ),
-                        );
-                        if (mounted) _loadData();
+                        Navigator.pop(context);
                       },
                     ),
                     _buildSidebarItem(
                       context,
-                      assetPath: 'assets/images/mansis/list_documents.png',
-                      title: 'Tipe Dokumen',
-                      isSelected: false,
-                      onTap: () async {
-                        Navigator.pop(context);
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TypeDocumentPage(),
-                          ),
-                        );
-                        if (mounted) _loadData();
-                      },
+                      assetPath: 'assets/images/mansis/documents_logo.png',
+                      title: 'Dokumen',
+                      isSelected: true,
+                      onTap: () => Navigator.pop(context),
                     ),
+                    if (widget.isAdmin) ...[
+                      const SizedBox(height: 12),
+                      _buildSectionTitle('Data Master', theme),
+                      _buildSidebarItem(
+                        context,
+                        assetPath: 'assets/images/mansis/pic_logo.png',
+                        title: 'Daftar PIC',
+                        isSelected: false,
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ListPicPage(),
+                            ),
+                          );
+                          if (mounted) _loadData();
+                        },
+                      ),
+                      _buildSidebarItem(
+                        context,
+                        assetPath: 'assets/images/mansis/list_documents.png',
+                        title: 'Tipe Dokumen',
+                        isSelected: false,
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TypeDocumentPage(),
+                            ),
+                          );
+                          if (mounted) _loadData();
+                        },
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildDrawerHeader(ThemeData theme, {required bool isDark}) {
+
+Widget _buildDrawerHeader(ThemeData theme,
+    {required Color surfaceColor, required bool isDark}) {
     return SafeArea(
       bottom: false,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: surfaceColor,
           border: Border(
             bottom: BorderSide(
               color: isDark
@@ -713,17 +731,19 @@ class _MansisHomePageState extends State<MansisHomePage> {
     required List<MansisLookupOption> items,
     required ValueChanged<MansisLookupOption?> onChanged,
   }) {
-    const selectedColor = Color(0xFF82B43F);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textColor = colorScheme.onSurface;
+    final selectedColor = colorScheme.primaryContainer;
+    final selectedTextColor = colorScheme.onPrimaryContainer;
     final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
+    final textColor = colorScheme.onSurface;
 
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
         boxShadow: isDark
@@ -771,7 +791,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
             padding: EdgeInsets.zero,
             maxHeight: 300,
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color: surfaceColor,
               borderRadius: BorderRadius.circular(6),
             ),
           ),
@@ -787,15 +807,15 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 decoration: BoxDecoration(
-                    color: isSelected ? selectedColor : colorScheme.surface,
-                    borderRadius: BorderRadius.zero
+                  color: isSelected ? selectedColor : surfaceColor,
+                  borderRadius: BorderRadius.zero,
                 ),
                 child: Text(
                   item.name,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
-                    color: isSelected ? Colors.white : textColor,
+                    color: isSelected ? selectedTextColor : textColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -918,11 +938,12 @@ class _DocumentCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
         boxShadow: isDark
@@ -989,7 +1010,10 @@ class _DocumentCard extends StatelessWidget {
                             children: [
                               Icon(Icons.delete_outline, color: colorScheme.error),
                               const SizedBox(width: 8),
-                              Text('Hapus Dokumen', style: TextStyle(color: colorScheme.error)),                              Text('Hapus Dokumen', style: TextStyle(color: Colors.red)),
+                              Text(
+                                'Hapus Dokumen',
+                                style: TextStyle(color: colorScheme.error),
+                              ),
                             ],
                           ),
                         ),
@@ -1013,9 +1037,10 @@ class _DocumentCard extends StatelessWidget {
             spacing: 8,
             children: [
               _outlineChip(
+                context: context,
                 label: document.category,
                 color: colorScheme.primary,
-                background: colorScheme.surface,
+                background: surfaceColor,
                 textColor: colorScheme.primary,
               ),
               _chip(
@@ -1124,18 +1149,21 @@ class _DocumentCard extends StatelessWidget {
   }
 
   Widget _outlineChip({
+    required BuildContext context,
     required String label,
-    Color color = const Color(0xFF82B43F),
+    Color? color,
     Color? background,
     Color? textColor,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final chipColor = color ?? colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: background ?? color.withOpacity(0.08),
+        color: background ?? chipColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color,
+          color: chipColor,
           width: 1,
         ),
       ),

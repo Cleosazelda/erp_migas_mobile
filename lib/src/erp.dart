@@ -21,7 +21,8 @@ class ERP extends StatelessWidget {
             brightness: Brightness.light,
             scaffoldBackgroundColor: Colors.white,  // PUTIH
             cardColor: Colors.white,
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.light),
+            colorScheme:
+            ColorScheme.fromSeed(seedColor: Colors.white, brightness: Brightness.light),
             useMaterial3: true,
             appBarTheme: const AppBarTheme(
               backgroundColor: Colors.white,
