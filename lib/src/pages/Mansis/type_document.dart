@@ -122,15 +122,17 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
         ),
         titleSpacing: 0,
         title: Row(
@@ -153,7 +155,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
                 Text(
                   'Kelola Jenis Dokumen',
                   style: theme.textTheme.bodySmall
-                      ?.copyWith(color: Colors.grey[600]),
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -162,7 +164,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
         actions: [
           IconButton(
             onPressed: _loadData,
-            icon: const Icon(Icons.refresh_outlined, color: Colors.black87),
+            icon: Icon(Icons.refresh_outlined, color: colorScheme.onSurface),
           ),
           const SizedBox(width: 4),
         ],
@@ -195,6 +197,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
   }
 
   Widget _buildHeaderCard(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -207,7 +210,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.08),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -255,15 +258,19 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
   }
 
   Widget _buildTypeList(ThemeData theme) {
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     if (_types.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
+          border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+          boxShadow: isDark
+              ? null
+              : [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
               blurRadius: 6,
@@ -274,12 +281,12 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
         child: Column(
           children: [
             Icon(Icons.description_outlined,
-                color: Colors.grey.shade500, size: 32),
+                color: colorScheme.onSurfaceVariant, size: 32),
             const SizedBox(height: 8),
             Text(
               'Belum ada jenis dokumen',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[700],
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -287,7 +294,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
             Text(
               'Tekan tombol tambah untuk membuat jenis dokumen.',
               style:
-              theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -322,10 +329,12 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
+                border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+                boxShadow: isDark
+                    ? null
+                    : [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.03),
                     blurRadius: 6,
@@ -351,17 +360,17 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
                       children: [
                         Text(
                           item.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: Colors.black87,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Kategori dokumen Mansis',
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],

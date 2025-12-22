@@ -157,10 +157,11 @@ class _MansisHomePageState extends State<MansisHomePage> {
       );
       return;
     }
+    final colorScheme = Theme.of(context).colorScheme;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -213,6 +214,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
       );
       return;
     }
+    final colorScheme = Theme.of(context).colorScheme;
     if (document.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
@@ -230,7 +232,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -280,6 +282,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
   Future<void> _deleteDocument(MansisDocument document) async {
     if (!widget.isAdmin) return;
+    final colorScheme = Theme.of(context).colorScheme;
     if (document.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Dokumen tidak memiliki ID yang valid.')),
@@ -300,8 +303,8 @@ class _MansisHomePageState extends State<MansisHomePage> {
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
             ),
             child: const Text('Hapus'),
           ),
@@ -332,23 +335,24 @@ class _MansisHomePageState extends State<MansisHomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu, color: Colors.black87),
+            icon: Icon(Icons.menu, color: colorScheme.onSurface),
           ),
         ),
         actions: [
           IconButton(
             onPressed: _triggerRefresh,
             icon:
-            const Icon(Icons.refresh_outlined, color: Colors.black87),
+            Icon(Icons.refresh_outlined, color: colorScheme.onSurface),
           ),
         ],
         titleSpacing: 0,
@@ -370,8 +374,9 @@ class _MansisHomePageState extends State<MansisHomePage> {
                 ),
                 Text(
                   'Welcome ${widget.userName}!',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: Colors.grey[600]),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -420,16 +425,17 @@ class _MansisHomePageState extends State<MansisHomePage> {
         ),
       ),
       floatingActionButton:
-      _loadError == null && widget.isAdmin ? _buildFloatingButtons() : null,
+      _loadError == null && widget.isAdmin ? _buildFloatingButtons(colorScheme) : null,
     );
   }
 
 
   Drawer _buildDrawer(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Drawer(
       child: Container(
-        color: theme.brightness == Brightness.dark ? Colors.grey[850] : Colors.white,
+        color: colorScheme.surface,
         child: Column(
           children: [
             _buildDrawerHeader(theme, isDark: theme.brightness == Brightness.dark),
@@ -507,7 +513,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[850] : Colors.white,
+          color: theme.colorScheme.surface,
           border: Border(
             bottom: BorderSide(
               color: isDark
@@ -520,8 +526,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor:
-              isDark ? Colors.white.withOpacity(0.16) : Colors.grey[850]!.withOpacity(0.08),
+              backgroundColor: theme.colorScheme.primary.withOpacity(isDark ? 0.18 : 0.12),
               child: Padding(
                 padding: const EdgeInsets.all(6.0),
                 child: Image.asset(
@@ -589,7 +594,9 @@ class _MansisHomePageState extends State<MansisHomePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final color = isSelected ? theme.colorScheme.onSurface : theme.hintColor;
-    final bgColor = isSelected ? (isDark ? Colors.grey[850] : Colors.grey[200]) : Colors.transparent;
+    final bgColor = isSelected
+        ? theme.colorScheme.surfaceVariant.withOpacity(isDark ? 0.5 : 0.8)
+        : Colors.transparent;
 
     return Material(
       color: bgColor,
@@ -626,13 +633,16 @@ class _MansisHomePageState extends State<MansisHomePage> {
   }
 
   Widget _buildSearchField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
         hintText: 'Cari dokumen...',
         prefixIcon: const Icon(Icons.search),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: colorScheme.surfaceVariant.withOpacity(isDark ? 0.35 : 0.8),
         contentPadding:
         const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         border: OutlineInputBorder(
@@ -704,15 +714,21 @@ class _MansisHomePageState extends State<MansisHomePage> {
     required ValueChanged<MansisLookupOption?> onChanged,
   }) {
     const selectedColor = Color(0xFF82B43F);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textColor = colorScheme.onSurface;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
+        border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+        boxShadow: isDark
+            ? null
+            : [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 4,
@@ -736,26 +752,26 @@ class _MansisHomePageState extends State<MansisHomePage> {
                 child: Text(
                   item.name,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: textColor,
                   ),
                 ),
               );
             }).toList();
           },
 
-          iconStyleData: const IconStyleData(
+          iconStyleData: IconStyleData(
             icon: Icon(Icons.keyboard_arrow_down_rounded,
-                color: Colors.black87, size: 18),
+                color: textColor, size: 18),
           ),
 
           dropdownStyleData: DropdownStyleData(
             padding: EdgeInsets.zero,
             maxHeight: 300,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(6),
             ),
           ),
@@ -771,7 +787,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
 
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 decoration: BoxDecoration(
-                    color: isSelected ? selectedColor : Colors.white,
+                    color: isSelected ? selectedColor : colorScheme.surface,
                     borderRadius: BorderRadius.zero
                 ),
                 child: Text(
@@ -779,7 +795,7 @@ class _MansisHomePageState extends State<MansisHomePage> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14,
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: isSelected ? Colors.white : textColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -793,18 +809,23 @@ class _MansisHomePageState extends State<MansisHomePage> {
     );
   }
 
-  Widget _buildFloatingButtons() {
+  Widget _buildFloatingButtons(ColorScheme colorScheme) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
           heroTag: 'addButton',
-          backgroundColor: const Color(0xFF0B8A00),
+          backgroundColor: colorScheme.primary,
           shape: const CircleBorder(),
           onPressed: _openAddForm,
-          child: const Icon(Icons.note_add_outlined, size: 28, color: Colors.white),
+          child: Image.asset(
+            'assets/images/mansis/tambah_dokumen.png',
+            width: 28,
+            height: 28,
+            errorBuilder: (context, error, stackTrace) =>
+            const Icon(Icons.note_add_outlined, size: 28, color: Colors.white),
+          ),
         ),
-
       ],
     );
   }
@@ -894,14 +915,19 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+        boxShadow: isDark
+            ? null
+            : [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
             blurRadius: 4,
@@ -918,10 +944,9 @@ class _DocumentCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   document.title,
-                  style: const TextStyle(
-                    fontSize: 17,
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: Colors.black87,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -945,10 +970,10 @@ class _DocumentCard extends StatelessWidget {
                         PopupMenuItem<String>(
                           value: 'edit',
                           child: Row(
-                            children: const [
-                              Icon(Icons.edit_outlined, color: Colors.black87),
-                              SizedBox(width: 8),
-                              Text('Edit Dokumen'),
+                            children: [
+                              Icon(Icons.edit_outlined, color: colorScheme.onSurface),
+                              const SizedBox(width: 8),
+                              Text('Edit Dokumen', style: TextStyle(color: colorScheme.onSurface)),
                             ],
                           ),
                         ),
@@ -958,19 +983,18 @@ class _DocumentCard extends StatelessWidget {
                     if (isAdmin && onDelete != null) {
                       if (items.isNotEmpty) items.add(const PopupMenuDivider());
                       items.add(
-                        const PopupMenuItem<String>(
+                        PopupMenuItem<String>(
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Hapus Dokumen', style: TextStyle(color: Colors.red)),
+                              Icon(Icons.delete_outline, color: colorScheme.error),
+                              const SizedBox(width: 8),
+                              Text('Hapus Dokumen', style: TextStyle(color: colorScheme.error)),                              Text('Hapus Dokumen', style: TextStyle(color: Colors.red)),
                             ],
                           ),
                         ),
                       );
                     }
-
                     return items;
                   },
                   icon: isUpdating
@@ -979,7 +1003,7 @@ class _DocumentCard extends StatelessWidget {
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                      : const Icon(Icons.more_vert, color: Colors.black87),
+                      : Icon(Icons.more_vert, color: colorScheme.onSurface),
                 ),
             ],
           ),
@@ -990,16 +1014,18 @@ class _DocumentCard extends StatelessWidget {
             children: [
               _outlineChip(
                 label: document.category,
-                color: const Color(0xFF82B43F),
+                color: colorScheme.primary,
+                background: colorScheme.surface,
+                textColor: colorScheme.primary,
               ),
               _chip(
                 label: document.statusLabel,
                 bg: document.isActive
-                    ? const Color(0xFF82B43F)
-                    : Colors.grey.shade200,
+                    ? colorScheme.primary
+                    : colorScheme.surfaceVariant,
                 text: document.isActive
-                    ? Colors.white
-                    : Colors.grey.shade600,
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -1008,8 +1034,8 @@ class _DocumentCard extends StatelessWidget {
 
           Text(
             document.documentNumber,
-            style: TextStyle(
-              color: Colors.grey.shade800,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
               fontSize: 14,
             ),
           ),
@@ -1018,8 +1044,8 @@ class _DocumentCard extends StatelessWidget {
 
           Text(
             'PIC : ${document.pic}',
-            style: TextStyle(
-              color: Colors.grey.shade800,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
               fontSize: 14,
             ),
           ),
@@ -1028,8 +1054,8 @@ class _DocumentCard extends StatelessWidget {
 
           Text(
             'Tanggal Pengesahan ${document.approvalDateLabel}',
-            style: TextStyle(
-              color: Colors.grey.shade800,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
               fontSize: 14,
             ),
           ),
@@ -1045,7 +1071,7 @@ class _DocumentCard extends StatelessWidget {
                       ? () => _openDocument(context)
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF82B43F),
+                    backgroundColor: colorScheme.primary,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 18, vertical: 12),
                     elevation: 0,
@@ -1055,16 +1081,16 @@ class _DocumentCard extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Text(
                         'Link Dokumen',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       SizedBox(width: 8),
-                      Icon(Icons.open_in_new, color: Colors.white, size: 18),
+                      Icon(Icons.open_in_new, color: colorScheme.onPrimary, size: 18),
                     ],
                   ),
                 ),
@@ -1100,11 +1126,13 @@ class _DocumentCard extends StatelessWidget {
   Widget _outlineChip({
     required String label,
     Color color = const Color(0xFF82B43F),
+    Color? background,
+    Color? textColor,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: background ?? color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: color,
@@ -1114,7 +1142,7 @@ class _DocumentCard extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          color: color,
+          color: textColor ?? color,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),

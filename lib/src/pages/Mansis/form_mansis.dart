@@ -125,6 +125,9 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Form(
@@ -137,19 +140,19 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: colorScheme.outlineVariant?.withOpacity(0.4) ??
+                      colorScheme.outline.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            const Center(
+             Center(
               child: Text(
                 'Data Manajemen Sistem',
-                style: TextStyle(
-                  fontSize: 18,
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
@@ -159,19 +162,21 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                  color: isDark
+                      ? colorScheme.primary.withOpacity(0.15)
+                      : const Color(0xFFE8F5E9),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(Icons.edit, color: Color(0xFF0B8A00)),
-                    SizedBox(width: 8),
+                  children: [
+                    Icon(Icons.edit, color: colorScheme.primary),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Perbarui detail dokumen yang dipilih.',
-                        style: TextStyle(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B8A00),
+                          color: colorScheme.primary,
                         ),
                       ),
                     ),
@@ -257,8 +262,8 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                   child: OutlinedButton(
                     onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF7CB342),
-                      side: const BorderSide(color: Color(0xFF7CB342)),
+                      foregroundColor: colorScheme.primary,
+                      side: BorderSide(color: colorScheme.primary),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -272,8 +277,8 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B8A00),
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
@@ -281,12 +286,12 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
                       ),
                     )
                         : Text(_isEditing ? 'Perbarui' : 'Simpan'),
@@ -306,10 +311,11 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
     required String hint,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -327,10 +333,11 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
     required String hint,
     required ValueChanged<MansisLookupOption?> onChanged,
   }) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         DropdownButtonFormField<MansisLookupOption>(
           value: value,
@@ -349,11 +356,12 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
   }
 
   Widget _buildDateField() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tanggal Pengesahan',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        Text('Tanggal Pengesahan',
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         TextFormField(
           controller: _dateController,
@@ -386,22 +394,24 @@ class _MansisFormSheetState extends State<MansisFormSheet> {
   }
 
   InputDecoration _inputDecoration(String hint) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: colorScheme.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colorScheme.outline.withOpacity(isDark ? 0.4 : 0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: colorScheme.outline.withOpacity(isDark ? 0.4 : 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF0B8A00), width: 1.2),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.2),
       ),
     );
   }
