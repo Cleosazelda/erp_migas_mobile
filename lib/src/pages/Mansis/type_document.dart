@@ -332,7 +332,7 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
                 color: cardColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-                boxShadow: isDark
+                boxShadow: isDark 
                     ? null
                     : [
                   BoxShadow(
