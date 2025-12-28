@@ -1125,28 +1125,57 @@ class _DocumentCard extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
               fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
           ),
 
           const SizedBox(height: 4),
 
-          Text(
-            'PIC : ${document.pic}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 14,
+          RichText(
+            text: TextSpan(
+              text: 'PIC : ',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              children: [
+                TextSpan(
+                  text: document.pic,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
+
 
           const SizedBox(height: 4),
 
-          Text(
-            'Tanggal Pengesahan ${document.approvalDateLabel}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 14,
+          RichText(
+            text: TextSpan(
+              text: 'Tanggal Pengesahan : ',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              children: [
+                TextSpan(
+                  text: document.approvalDateLabel,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
+
 
           const SizedBox(height: 14),
 
@@ -1267,7 +1296,7 @@ class _PicIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = _picColor(pic, colorScheme);
+    final color = _picColor(pic);
 
     return Tooltip(
       message: pic,
@@ -1298,22 +1327,28 @@ class _PicIndicator extends StatelessWidget {
     );
   }
 
-  Color _picColor(String name, ColorScheme colorScheme) {
+  Color _picColor(String name) {
     final picName = name.toLowerCase();
+    final palette = <Color>[
+      Colors.green.shade600,
+      Colors.blue.shade600,
+      Colors.orange.shade600,
+      Colors.purple.shade500,
+      Colors.teal.shade600,
+      Colors.red.shade500,
+      Colors.indigo.shade500,
+      Colors.pink.shade400,
+      Colors.amber.shade700,
+      Colors.cyan.shade600,
+      Colors.brown.shade500,
+      Colors.deepPurple.shade400,
+    ];
 
-    if (picName.contains('sekretaris perusahaan')) {
-      return Colors.green.shade600;
-    }
-    if (picName.contains('direktur')) {
-      return Colors.blue.shade600;
-    }
-    if (picName.contains('manager') || picName.contains('manajer')) {
-      return Colors.orange.shade600;
-    }
-    if (picName.contains('supervisor')) {
-      return Colors.purple.shade500;
+    int hash = 0;
+    for (final codeUnit in picName.codeUnits) {
+      hash = (hash * 31 + codeUnit) & 0x7fffffff;
     }
 
-    return colorScheme.secondary;
+    return palette[hash % palette.length];
   }
 }
