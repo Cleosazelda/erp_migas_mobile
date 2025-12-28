@@ -265,7 +265,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Drawer _buildDrawer() {
-    // ... (Fungsi _buildDrawer tidak berubah)
     final fullName = "${widget.firstName} ${widget.lastName}";
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;

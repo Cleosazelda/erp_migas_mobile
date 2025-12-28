@@ -7,6 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+enum MansisStatusFilter { all, active, inactive }
+
+extension on MansisStatusFilter {
+  String get label {
+    switch (this) {
+      case MansisStatusFilter.all:
+        return 'Semua Dokumen';
+      case MansisStatusFilter.active:
+        return 'Dokumen Aktif';
+      case MansisStatusFilter.inactive:
+        return 'Dokumen Tidak Aktif';
+    }
+  }
+}
+
 class MansisHomePage extends StatefulWidget {
   final String userName;
   final bool isAdmin;
@@ -19,13 +34,14 @@ class MansisHomePage extends StatefulWidget {
 class _MansisHomePageState extends State<MansisHomePage> {
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
-  GlobalKey<RefreshIndicatorState>();
+    GlobalKey<RefreshIndicatorState>();
   final ScrollController _scrollController = ScrollController();
   List<MansisDocument> _documents = [];
   List<MansisLookupOption> _documentTypes = const [];
   List<MansisLookupOption> _picOptions = const [];
 
-  MansisLookupOption _selectedType =
+  MansisStatusFilter _statusFilter = MansisStatusFilter.active;
+    MansisLookupOption _selectedType =
   const MansisLookupOption(id: -1, name: 'Semua Jenis Dokumen');
   MansisLookupOption _selectedPic =
   const MansisLookupOption(id: -1, name: 'Semua PIC Dokumen');
@@ -81,10 +97,19 @@ class _MansisHomePageState extends State<MansisHomePage> {
         _documents = documents;
         _documentTypes = [_allDocumentTypeOption(), ...types];
         _picOptions = [_allPicOption(), ...pics];
-        _selectedType = _documentTypes.first;
-        _selectedPic = _picOptions.first;
+
+        _selectedType = _selectedType.id == -1
+            ? _documentTypes.first
+            : _selectedType;
+
+        _selectedPic = _selectedPic.id == -1
+            ? _picOptions.first
+            : _selectedPic;
+
+
         _isLoading = false;
       });
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -124,21 +149,30 @@ class _MansisHomePageState extends State<MansisHomePage> {
     final keyword = _searchController.text.toLowerCase();
 
     return _documents.where((doc) {
+      // 1. Filter Status (Kunci utama permintaan lu)
+      final matchesStatus = switch (_statusFilter) {
+        MansisStatusFilter.all => true, // Tampilkan semua tanpa peduli isActive
+        MansisStatusFilter.active => doc.isActive == true, // Cuma yang aktif
+        MansisStatusFilter.inactive => doc.isActive == false, // Cuma yang tidak aktif
+      };
+
+      // 2. Filter Jenis Dokumen
       final matchesType = _selectedType.id == -1 ||
           doc.category.toLowerCase() == _selectedType.name.toLowerCase();
 
+      // 3. Filter PIC
       final matchesPic = _selectedPic.id == -1 ||
           doc.pic.toLowerCase() == _selectedPic.name.toLowerCase();
 
+      // 4. Filter Search Bar
       final matchesSearch = keyword.isEmpty ||
           doc.title.toLowerCase().contains(keyword) ||
           doc.documentNumber.toLowerCase().contains(keyword) ||
           doc.pic.toLowerCase().contains(keyword);
 
-      return matchesType && matchesPic && matchesSearch;
+      return matchesStatus && matchesType && matchesPic && matchesSearch;
     }).toList();
   }
-
   void _applyFilters() => setState(() {});
 
   Future<void> _triggerRefresh() async {
@@ -672,34 +706,16 @@ Widget _buildDrawerHeader(ThemeData theme,
   }
 
   Widget _buildFilters() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmallScreen = constraints.maxWidth < 380;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Chips filter ditaruh paling atas biar gak menuhi baris
+        _buildStatusFilterChips(),
 
-        if (isSmallScreen) {
-          return Column(
-            children: [
-              _buildDropdown(
-                value: _selectedType,
-                items: _documentTypes,
-                onChanged: (value) {
-                  if (value != null) setState(() => _selectedType = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildDropdown(
-                value: _selectedPic,
-                items: _picOptions,
-                onChanged: (value) {
-                  if (value != null) setState(() => _selectedPic = value);
-                },
-              ),
-            ],
-          );
-        }
+        const SizedBox(height: 12),
 
-
-        return Row(
+        // Dua dropdown ditaruh berdampingan di bawah chips
+        Row(
           children: [
             Expanded(
               child: _buildDropdown(
@@ -721,10 +737,55 @@ Widget _buildDrawerHeader(ThemeData theme,
               ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
+
+
+  Widget _buildStatusFilterChips() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    const filters = MansisStatusFilter.values;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((filter) {
+          final bool selected = _statusFilter == filter;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              selected: selected,
+              onSelected: (_) => setState(() => _statusFilter = filter),
+              label: Text(
+                filter.label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: colorScheme.surface,
+              selectedColor: colorScheme.primary.withOpacity(0.18),
+              labelStyle: theme.textTheme.bodyMedium?.copyWith(
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.onSurface,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+              side: BorderSide(
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.outline.withOpacity(0.35),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
 
   Widget _buildDropdown({
     required MansisLookupOption value,
@@ -945,7 +1006,7 @@ class _DocumentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.5)),
         boxShadow: isDark
             ? null
             : [
@@ -962,6 +1023,8 @@ class _DocumentCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _PicIndicator(pic: document.pic),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   document.title,
@@ -1194,5 +1257,63 @@ class _DocumentCard extends StatelessWidget {
         const SnackBar(content: Text('Gagal membuka link dokumen')),
       );
     }
+  }
+}
+
+class _PicIndicator extends StatelessWidget {
+  final String pic;
+  const _PicIndicator({required this.pic});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = _picColor(pic, colorScheme);
+
+    return Tooltip(
+      message: pic,
+      child: Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.9), color.withOpacity(0.7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.circle,
+          size: 10,
+          color: colorScheme.onPrimary.withOpacity(0.0),
+        ),
+      ),
+    );
+  }
+
+  Color _picColor(String name, ColorScheme colorScheme) {
+    final picName = name.toLowerCase();
+
+    if (picName.contains('sekretaris perusahaan')) {
+      return Colors.green.shade600;
+    }
+    if (picName.contains('direktur')) {
+      return Colors.blue.shade600;
+    }
+    if (picName.contains('manager') || picName.contains('manajer')) {
+      return Colors.orange.shade600;
+    }
+    if (picName.contains('supervisor')) {
+      return Colors.purple.shade500;
+    }
+
+    return colorScheme.secondary;
   }
 }
