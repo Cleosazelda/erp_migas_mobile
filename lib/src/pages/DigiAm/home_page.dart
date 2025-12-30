@@ -27,13 +27,11 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   DateTime selectedDate = DateTime.now();
   late Future<List<JadwalRapat>> _futureJadwal;
 
-  // --- TAMBAHAN UNTUK SEARCH ---
-  List<JadwalRapat> _allBookings = []; // Menyimpan semua data dari API
-  List<JadwalRapat> _filteredBookings = []; // Data yang sudah difilter (oleh user & search)
+  List<JadwalRapat> _allBookings = [];
+  List<JadwalRapat> _filteredBookings = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedFilterChip;
-  // --- AKHIR TAMBAHAN ---
 
   @override
   void initState() {
@@ -41,31 +39,29 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     _tabController = TabController(length: 2, vsync: this);
     initializeDateFormatting('id_ID', null).then((_) {
       if (mounted) {
-        _loadJadwalAndInitializeFilter(); // Memuat data dan menerapkan filter awal
+        _loadJadwalAndInitializeFilter();
       }
     });
-    // Tambahkan listener untuk search controller
     _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _searchController.removeListener(_onSearchChanged); // Hapus listener
-    _searchController.dispose(); // Hapus controller
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
     super.dispose();
   }
 
-  // --- FUNGSI BARU: Memuat data dan filter ---
   void _loadJadwalAndInitializeFilter() {
     if (!mounted) return;
     setState(() {
       _futureJadwal = JadwalApiService.getAllJadwal().then((bookings) {
         if (mounted) {
-          _allBookings = bookings; // Simpan data lengkap
-          _applyFilters(); // Terapkan filter (awal)
+          _allBookings = bookings;
+          _applyFilters();
         }
-        return bookings; // Kembalikan untuk FutureBuilder
+        return bookings;
       }).catchError((error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -73,30 +69,25 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
             backgroundColor: Colors.red,
           ));
         }
-        throw error; // Biarkan FutureBuilder menangani error
+        throw error;
       });
     });
   }
 
-  // --- MODIFIKASI: _reloadData ---
   void _reloadData() {
-    // Muat ulang data dan filter
     _loadJadwalAndInitializeFilter();
   }
-
-  // --- FUNGSI BARU: Listener perubahan search ---
   void _onSearchChanged() {
     if (_searchQuery != _searchController.text) {
       if (mounted) {
         setState(() {
           _searchQuery = _searchController.text;
-          _applyFilters(); // Terapkan filter setiap kali teks berubah
+          _applyFilters();
         });
       }
     }
   }
 
-  // --- FUNGSI BARU: Menerapkan filter (user & search) ---
   void _applyFilters() {
     if (!mounted) return;
 
@@ -167,7 +158,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   void _onDateChanged(DateTime newDate) {
     setState(() {
       selectedDate = newDate;
-      // Note: Filter di _buildRuangRapatTab akan otomatis terupdate
     });
   }
 
@@ -211,7 +201,7 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
         controller: _tabController,
         children: [
           _buildRuangRapatTab(),
-          _buildListPeminjamanTab(), // Tab ini sekarang punya search
+          _buildListPeminjamanTab(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -223,7 +213,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   AppBar _buildAppBar(BuildContext context) {
-    // ... (Fungsi _buildAppBar tidak berubah)
     final fullName = "${widget.firstName} ${widget.lastName}";
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -286,8 +275,8 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                     title: "Beranda",
                     isSelected: false,
                     onTap: () {
-                      Navigator.pop(context); // close drawer
-                      Navigator.pop(context); // return to previous HomePage instance
+                      Navigator.pop(context);
+                      Navigator.pop(context);
                     },
                   ),
                   _buildSidebarItem(
@@ -487,8 +476,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildRuangRapatTab() {
-    // ... (Fungsi _buildRuangRapatTab tidak berubah)
-    //     (Dia sudah menggunakan _futureJadwal dan `selectedDate`)
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
@@ -530,7 +517,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   Widget _buildDateSelector() {
-    // ... (Fungsi _buildDateSelector tidak berubah)
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: isDark ? Colors.grey[900] : Colors.white,
@@ -563,23 +549,30 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
   }
 
   void _openTambahJadwal() async {
-    // ... (Fungsi _openTambahJadwal tidak berubah)
-    final result = await showDialog(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? colorScheme.surface : Colors.white;
+
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: TambahJadwalPage(namaPengguna: "${widget.firstName} ${widget.lastName}"),
+      isScrollControlled: true,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: TambahJadwalPage(
+          namaPengguna: "${widget.firstName} ${widget.lastName}",
+        ),
+     ),
     );
-    if (result == true) {
-      _reloadData();
-    }
+    if (result == true) _reloadData();
   }
 
 
-
   ElevatedButton _dateButton(String label, VoidCallback onPressed) {
-    // ... (Fungsi _dateButton tidak berubah)
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
@@ -592,7 +585,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
     );
   }
 
-  // --- MODIFIKASI BESAR: _buildListPeminjamanTab ---
   Widget _buildListPeminjamanTab() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -601,7 +593,6 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
       color: theme.scaffoldBackgroundColor,
       child: Column(
         children: [
-          // --- Search Bar (diambil dari admin_page) ---
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             color: isDark ? Colors.grey[850] : Colors.white,
@@ -667,22 +658,16 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
 
           Divider(height: 1, thickness: 1, color: theme.dividerColor.withOpacity(0.1)),
 
-          // --- List Peminjaman (Sekarang menggunakan _filteredBookings) ---
           Expanded(
             child: FutureBuilder<List<JadwalRapat>>(
-                future: _futureJadwal, // Tetap gunakan future untuk loading/error
+                future: _futureJadwal,
                 builder: (context, snapshot) {
-                  // Tampilkan loading HANYA saat data awal sedang dimuat
                   if (snapshot.connectionState == ConnectionState.waiting && _allBookings.isEmpty) {
                     return const Center(child: CircularProgressIndicator());
                   }
-
-                  // Tampilkan error HANYA jika data awal gagal dimuat
                   if (snapshot.hasError && _allBookings.isEmpty) {
                     return Center(child: Text("Gagal memuat data peminjaman: ${snapshot.error}"));
                   }
-
-                  // Jika data sudah ada (dari snapshot atau state), cek list yg sudah difilter
                   if (_filteredBookings.isEmpty) {
                     return Center(
                       child: Text(
@@ -695,14 +680,13 @@ class _DigiAmHomePageState extends State<DigiAmHomePage> with SingleTickerProvid
                     );
                   }
 
-                  // Tampilkan list berdasarkan _filteredBookings
                   return RefreshIndicator(
                     onRefresh: () async => _reloadData(),
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      itemCount: _filteredBookings.length, // Gunakan list yg sudah difilter
+                      itemCount: _filteredBookings.length,
                       itemBuilder: (context, index) {
-                        final jadwal = _filteredBookings[index]; // Gunakan list yg sudah difilter
+                        final jadwal = _filteredBookings[index];
                         return _buildBookingListItem(jadwal, theme);
                       },
                       separatorBuilder: (context, index) => Divider(

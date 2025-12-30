@@ -158,78 +158,139 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey.shade100,
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
+    return SafeArea(
+      child: Form(
+        key: _formKey,
+        child: isDropdownLoading
+            ? const Center(child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: CircularProgressIndicator(),
+        ))
+            : SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(theme),
-              Expanded(
-                child: isDropdownLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTextField(namaController, "Nama Pengguna (PIC)", readOnly: true, filled: true),
-                      const SizedBox(height: 16),
-                      _buildTanggalField(theme),
-                      const SizedBox(height: 16),
-
-                      // --- DROPDOWN PERUSAHAAN (Tampilan Tetap Dropdown) ---
-                      _buildDropdown(
-                        label: "Perusahaan",
-                        hint: "Pilih Perusahaan",
-                        items: perusahaanList,
-                        idKey: 'id',
-                        nameKey: 'callsign',
-                        value: selectedPerusahaanId,
-                        onChanged: (v) => setState(() => selectedPerusahaanId = v),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- DROPDOWN DIVISI (Tampilan Tetap Dropdown) ---
-                      _buildDropdown(
-                        label: "Divisi",
-                        hint: "Pilih Divisi",
-                        items: divisiList,
-                        idKey: 'id',
-                        nameKey: 'divisi',
-                        value: selectedDivisiId,
-                        onChanged: (v) => setState(() => selectedDivisiId = v),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // --- DROPDOWN RUANGAN ---
-                      _buildDropdown(
-                        label: "Ruangan",
-                        hint: "Pilih Ruangan",
-                        items: ruanganList,
-                        idKey: 'id', // atau 'ruangan_id' sesuai API ruangan
-                        nameKey: 'ruangan',
-                        value: selectedRuanganId,
-                        onChanged: (v) => setState(() => selectedRuanganId = v),
-                      ),
-
-                      const SizedBox(height: 16),
-                      _buildJamMenit("Jam Mulai", jamMulai, menitMulai, (v) => setState(() => jamMulai = v), (v) => setState(() => menitMulai = v), theme, isDark),
-                      const SizedBox(height: 16),
-                      _buildJamMenit("Jam Selesai", jamSelesai, menitSelesai, (v) => setState(() => jamSelesai = v), (v) => setState(() => menitSelesai = v), theme, isDark),
-                      const SizedBox(height: 16),
-                      _buildTextField(pesertaController, "Jumlah Peserta", keyboard: TextInputType.number),
-                      const SizedBox(height: 16),
-                      _buildTextField(agendaController, "Agenda Rapat", maxLines: 3),
-                      const SizedBox(height: 16),
-                      _buildTextField(catatanController, "Catatan Tambahan (Opsional)", maxLines: 3, isRequired: false),
-                    ],
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant?.withOpacity(0.4) ??
+                        colorScheme.outline.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Jadwal Rapat',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildLabeledField(
+                label: "Nama Pengguna (PIC)",
+                child: _buildTextField(
+                  namaController,
+                  hint: "Nama Pengguna (PIC)",
+                  readOnly: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Agenda Rapat",
+                child: _buildTextField(
+                  agendaController,
+                  hint: "Tuliskan agenda rapat",
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Tanggal",
+                child: _buildTanggalField(theme),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Perusahaan",
+                child: _buildDropdown(
+                  hint: "Pilih Perusahaan",
+                  items: perusahaanList,
+                  idKey: 'id',
+                  nameKey: 'callsign',
+                  value: selectedPerusahaanId,
+                  onChanged: (v) => setState(() => selectedPerusahaanId = v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Divisi",
+                child: _buildDropdown(
+                  hint: "Pilih Divisi",
+                  items: divisiList,
+                  idKey: 'id',
+                  nameKey: 'divisi',
+                  value: selectedDivisiId,
+                  onChanged: (v) => setState(() => selectedDivisiId = v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Ruangan",
+                child: _buildDropdown(
+                  hint: "Pilih Ruangan",
+                  items: ruanganList,
+                  idKey: 'id',
+                  nameKey: 'ruangan',
+                  value: selectedRuanganId,
+                  onChanged: (v) => setState(() => selectedRuanganId = v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildJamMenit(
+                label: "Jam Mulai",
+                jam: jamMulai,
+                menit: menitMulai,
+                onJam: (v) => setState(() => jamMulai = v),
+                onMenit: (v) => setState(() => menitMulai = v),
+                theme: theme,
+              ),
+              const SizedBox(height: 12),
+              _buildJamMenit(
+                label: "Jam Selesai",
+                jam: jamSelesai,
+                menit: menitSelesai,
+                onJam: (v) => setState(() => jamSelesai = v),
+                onMenit: (v) => setState(() => menitSelesai = v),
+                theme: theme,
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Jumlah Peserta",
+                child: _buildTextField(
+                  pesertaController,
+                  hint: "Masukkan jumlah peserta",
+                  keyboard: TextInputType.number,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildLabeledField(
+                label: "Catatan Tambahan (Opsional)",
+                child: _buildTextField(
+                  catatanController,
+                  hint: "Tambahkan catatan bila perlu",
+                  maxLines: 3,
+                  isRequired: false,
+                ),
+              ),
+              const SizedBox(height: 20),
               _buildBottomButtons(theme),
             ],
           ),
@@ -238,27 +299,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     );
   }
 
-  // --- Helper Widgets (Sama seperti sebelumnya) ---
-
-  Widget _buildHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text("Tambah Jadwal", style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDropdown({
-    required String label,
     required String hint,
     required List<Map<String, dynamic>> items,
     required String idKey,
@@ -273,34 +314,40 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
       value: isValidValue ? value : null,
       hint: Text(hint),
       isExpanded: true,
-      items: items.map((item) {
-        return DropdownMenuItem<int>(
-          value: item[idKey] as int,
-          child: Text(item[nameKey].toString(), overflow: TextOverflow.ellipsis),
-        );
-      }).toList(),
-      onChanged: onChanged, // User masih bisa ganti (sesuai request "tampilan sama")
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      items: items
+          .map((item) => DropdownMenuItem<int>(
+        value: item[idKey] as int,
+        child: Text(item[nameKey].toString(),
+            overflow: TextOverflow.ellipsis),
+      ))
+          .toList(),
+      onChanged: onChanged,
+      decoration: _inputDecoration(hint).copyWith(
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
       ),
       validator: (v) => v == null ? 'Wajib diisi' : null,
     );
   }
 
-  Widget _buildTextField(TextEditingController c, String label, {bool readOnly = false, bool filled = false, int maxLines = 1, TextInputType keyboard = TextInputType.text, bool isRequired = true}) {
-    return TextFormField(
+  Widget _buildTextField(
+      TextEditingController c, {
+        required String hint,
+        bool readOnly = false,
+        int maxLines = 1,
+        TextInputType keyboard = TextInputType.text,
+        bool isRequired = true,
+      }) {
+      return TextFormField(
       controller: c,
       readOnly: readOnly,
       maxLines: maxLines,
       keyboardType: keyboard,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: filled,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      validator: (v) => isRequired && (v == null || v.isEmpty) ? 'Wajib diisi' : null,
+      decoration: _inputDecoration(hint),
+      validator: (v) => isRequired && (v == null || v.isEmpty)
+          ? 'Wajib diisi'
+          : null,
     );
   }
 
@@ -317,52 +364,146 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
         );
         if (d != null) tanggalController.text = DateFormat('yyyy-MM-dd').format(d);
       },
-      decoration: InputDecoration(
-        labelText: "Tanggal",
-        suffixIcon: const Icon(Icons.calendar_today),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      decoration: _inputDecoration("Pilih tanggal").copyWith(
+        suffixIcon: const Icon(Icons.calendar_today_outlined),
       ),
     );
   }
 
-  Widget _buildJamMenit(String label, String? jam, String? menit, ValueChanged<String?> onJam, ValueChanged<String?> onMenit, ThemeData theme, bool isDark) {
-    return Row(
+  Widget _buildJamMenit({
+    required String label,
+    required String? jam,
+    required String? menit,
+    required ValueChanged<String?> onJam,
+    required ValueChanged<String?> onMenit,
+    required ThemeData theme,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: jam,
+                items: jamList
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: onJam,
+                decoration: _inputDecoration("Jam"),
+                validator: (v) => v == null ? 'Wajib diisi' : null,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: menit,
+                items: menitList
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: onMenit,
+                decoration: _inputDecoration("Menit"),
+                validator: (v) => v == null ? 'Wajib diisi' : null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomButtons(ThemeData theme) {    return Row(
       children: [
         Expanded(
-          child: DropdownButtonFormField<String>(
-            value: jam,
-            items: jamList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: onJam,
-            decoration: InputDecoration(labelText: "$label", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+          child: OutlinedButton(
+            onPressed: isLoading ? null : () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.primary,
+              side: BorderSide(color: theme.colorScheme.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text("Batal"),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
-          child: DropdownButtonFormField<String>(
-            value: menit,
-            items: menitList.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: onMenit,
-            decoration: InputDecoration(labelText: "Menit", border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _simpanJadwal,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: isLoading
+                ? SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.colorScheme.onPrimary),
+              ),
+            )
+                : const Text("Simpan"),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBottomButtons(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: theme.cardColor,
-      child: Row(
-        children: [
-          Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("Batal"))),
-          const SizedBox(width: 12),
-          Expanded(child: ElevatedButton(
-            onPressed: isLoading ? null : _simpanJadwal,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            child: isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Simpan"),
-          )),
-        ],
+  Widget _buildLabeledField({
+    required String label,
+    required Widget child,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style:
+          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: colorScheme.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: colorScheme.outline.withOpacity(isDark ? 0.4 : 0.3),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: colorScheme.outline.withOpacity(isDark ? 0.4 : 0.3),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.2),
       ),
     );
   }

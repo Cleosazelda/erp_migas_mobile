@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_card.dart';
 import 'DigiAm/home_page.dart';
 import 'admin/DigiAm/dashboard_admin.dart';
+import 'BisnisAP/dashboard_page.dart';
 import 'detail_page.dart';
 import 'history_page.dart';
 import 'profile_page.dart';
@@ -214,8 +215,15 @@ class _HomeGrid extends StatelessWidget {
                                           ),
                                     ),
                                   );
-                                }
-                              } else if (app["title"] == "Mansis") {
+                              }
+                              } else if (app["title"] == "Bisnis AP") {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const BisnisApDashboardPage(),
+                                  ),
+                                );
+                          } else if (app["title"] == "Mansis") {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

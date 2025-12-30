@@ -406,10 +406,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
         onPressed: () {
-          showDialog(
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final isDark = theme.brightness == Brightness.dark;
+          final surfaceColor = isDark ? colorScheme.surface : Colors.white;
+
+          showModalBottomSheet<bool>(
             context: context,
-            builder: (context) => Dialog(
-              insetPadding: const EdgeInsets.all(16),
+            isScrollControlled: true,
+            backgroundColor: surfaceColor,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            builder: (ctx) => Padding(
+              padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
               child: TambahJadwalPage(namaPengguna: fullName),
             ),
           ).then((result) {
