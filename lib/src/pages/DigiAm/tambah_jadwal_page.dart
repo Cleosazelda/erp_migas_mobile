@@ -422,8 +422,8 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
           child: OutlinedButton(
             onPressed: isLoading ? null : () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.primary,
-              side: BorderSide(color: theme.colorScheme.primary),
+              foregroundColor: Colors.green,
+              side: const BorderSide(color: Colors.green),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),

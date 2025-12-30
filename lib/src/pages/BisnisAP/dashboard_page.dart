@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class BisnisApDashboardPage extends StatefulWidget {
-  const BisnisApDashboardPage({super.key});
+  final String userName;
+
+  const BisnisApDashboardPage({super.key, required this.userName});
 
   @override
   State<BisnisApDashboardPage> createState() => _BisnisApDashboardPageState();
@@ -16,6 +19,9 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
   String _selectedYear = '2025';
   String _selectedFilter = 'All';
   String _selectedFilterOption = 'All';
+  DateTime _currentDate = DateTime.now();
+  late Timer _clockTimer;
+  String _currentTime = '';
 
   final List<_CompanyMetrics> _companies = [
     _CompanyMetrics(
@@ -118,6 +124,30 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _selectedFilterOption = _availableFilterOptions.first;
+    _startClock();
+  }
+
+  void _startClock() {
+    _updateClock();
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) => _updateClock());
+  }
+
+  void _updateClock() {
+    setState(() {
+      _currentDate = DateTime.now();
+      _currentTime = DateFormat('HH:mm').format(_currentDate);
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer.cancel();
+    super.dispose();
+  }
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -126,8 +156,15 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
     return Scaffold(
       backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F6FA),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90),
-        child: Builder(builder: (context) => _buildAppBar(theme, colorScheme, surfaceColor)),
+        preferredSize: const Size.fromHeight(70),
+        child: Builder(
+          builder: (context) => _buildAppBar(
+            context,
+            theme: theme,
+            colorScheme: colorScheme,
+            surfaceColor: surfaceColor,
+          ),
+        ),
       ),
 
       drawer: _buildDrawer(context, surfaceColor: surfaceColor, isDark: isDark),
@@ -147,7 +184,10 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
     );
   }
 
-  AppBar _buildAppBar(ThemeData theme, ColorScheme colorScheme, Color surfaceColor) {
+  AppBar _buildAppBar(BuildContext context,
+      {required ThemeData theme,
+        required ColorScheme colorScheme,
+        required Color surfaceColor}) {
     return AppBar(
       backgroundColor: surfaceColor,
       surfaceTintColor: Colors.transparent,
@@ -158,67 +198,79 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
       ),
       titleSpacing: 0,
       title: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.transparent,
-            backgroundImage: AssetImage('assets/images/logo.png'),
+          Image.asset(
+            'assets/images/logo.png',
+            width: 40,
+            height: 40,
+            errorBuilder: (context, error, stackTrace) => Icon(
+              Icons.business,
+              size: 40,
+              color: colorScheme.primary,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Bisnis Anak Perusahaan',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                DateFormat('E, dd MMMM yyyy', 'id_ID').format(_currentDate),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.hintColor,
+                  fontSize: 12,
+                ),
               ),
               Text(
-                'Dashboard Bisnis AP',
+                'Bisnis AP',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              Text(
+                'Selamat Datang ${widget.userName}!',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  color: theme.hintColor,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
         ],
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Muat Ulang',
+          onPressed: _updateClock,
+        ),
+      ],
     );
   }
 
   Drawer _buildDrawer(BuildContext context, {required Color surfaceColor, required bool isDark}) {
     final theme = Theme.of(context);
     return Drawer(
-      child: Container(
-        color: surfaceColor,
-        child: Column(
-          children: [
-            _buildDrawerHeader(theme, surfaceColor: surfaceColor, isDark: isDark),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildSectionTitle('Navigasi', theme),
-                  _buildSidebarItem(
-                    context,
-                    assetPath: 'assets/images/home.png',
-                    title: 'Beranda',
-                    isSelected: false,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                  ),
-                  _buildSidebarItem(
-                    context,
-                    assetPath: 'assets/images/bisnis_ap.png',
-                    title: 'Dashboard Bisnis AP',
-                    isSelected: true,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                ],
+      child: SafeArea(
+        child: Container(
+          color: surfaceColor,
+          child: Column(
+            children: [
+              _buildDrawerHeader(
+                theme,
+                surfaceColor: surfaceColor,
+                isDark: isDark,
               ),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: _buildSidebarMenu(theme, context),
+                ),
+              ),
+              ],
             ),
-          ],
         ),
       ),
     );
@@ -237,83 +289,200 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.transparent,
-            backgroundImage: AssetImage('assets/images/logo.png'),
+          CircleAvatar(
+            radius: 30,
+            backgroundColor:
+            isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!.withOpacity(0.6),
+            child: Padding(
+              padding: const EdgeInsets.all(6.0),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.account_circle,
+                  size: 38,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'MUJ Apps',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'Bisnis Anak Perusahaan',
-                style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.userName,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Dashboard Bisnis AP',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                ),
+                const SizedBox(height: 6),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title, ThemeData theme) {
+  List<Widget> _buildSidebarMenu(ThemeData theme, BuildContext context) {
+    final sections = [
+      _SidebarMenuSection(
+        title: 'Layanan Umum',
+        items: [
+          _SidebarMenuItem(
+            title: 'Beranda',
+            icon: Icons.home_outlined,
+            isSelected: false,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+      _SidebarMenuSection(
+        title: 'Bisnis AP',
+        items: [
+          _SidebarMenuItem(
+            title: 'Dashboard',
+            icon: Icons.dashboard_outlined,
+            isSelected: true,
+            onTap: () => Navigator.pop(context),
+          ),
+          _SidebarMenuItem(
+            title: 'Monitoring',
+            icon: Icons.monitor_heart_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+        ],
+      ),
+      _SidebarMenuSection(
+        title: 'Entitas',
+        items: [
+          _SidebarMenuItem(
+            title: 'MUJI',
+            icon: Icons.apartment_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'ENM',
+            icon: Icons.factory_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'MUJ ONWJ',
+            icon: Icons.water_damage_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+        ],
+      ),
+      _SidebarMenuSection(
+        title: 'Master Data',
+        items: [
+          _SidebarMenuItem(
+            title: 'Anak Perusahaan',
+            icon: Icons.account_tree_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'Mitra',
+            icon: Icons.group_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'Jenis',
+            icon: Icons.category_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'Kategori',
+            icon: Icons.label_outline,
+            onTap: () => _showComingSoon(context),
+          ),
+        ],
+      ),
+    ];
+
+    return [
+      const SizedBox(height: 12),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(
+          'Menu',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      ...sections.expand((section) => [
+        const SizedBox(height: 12),
+        _buildSectionTitle(theme, section.title),
+        ...section.items.map((item) => _buildSidebarTile(theme, item)).toList(),
+      ]),
+      const SizedBox(height: 12),
+    ];
+  }
+
+  Widget _buildSectionTitle(ThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Text(
         title,
-        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.hintColor,
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
 
-  Widget _buildSidebarItem(
-      BuildContext context, {
-        required String assetPath,
-        required String title,
-        required bool isSelected,
-        required VoidCallback onTap,
-      }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final color = isSelected ? theme.colorScheme.onSurface : theme.hintColor;
-    final bgColor = isSelected ? (isDark ? Colors.grey[850] : Colors.grey[200]) : Colors.transparent;
-
-    return Material(
-      color: bgColor,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-          child: Row(
-            children: [
-              Image.asset(
-                assetPath,
-                width: 22,
-                height: 22,
-                color: color,
-                errorBuilder: (ctx, e, st) => const Icon(Icons.error, color: Colors.red, size: 22),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildSidebarTile(ThemeData theme, _SidebarMenuItem item) {
+    final colorScheme = theme.colorScheme;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: item.isSelected
+            ? colorScheme.primary.withOpacity(0.08)
+            : theme.cardColor.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: item.isSelected ? colorScheme.primary : Colors.transparent,
+          width: 1.2,
         ),
       ),
+      child: ListTile(
+        onTap: item.onTap,
+        leading: Icon(
+          item.icon,
+          color: item.isSelected ? colorScheme.primary : theme.hintColor,
+        ),
+        title: Text(
+          item.title,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: item.isSelected ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+    );
+  }
+
+
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Menu ini akan segera hadir.')),
     );
   }
 
@@ -578,7 +747,27 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _MetricCardData {
+class _SidebarMenuSection {
+  final String title;
+  final List<_SidebarMenuItem> items;
+
+  const _SidebarMenuSection({required this.title, required this.items});
+}
+
+class _SidebarMenuItem {
+  final String title;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SidebarMenuItem({
+    required this.title,
+    required this.icon,
+    this.isSelected = false,
+    required this.onTap,
+  });
+}
+  class _MetricCardData {
   final String title;
   final int rka;
   final int realisasi;
@@ -587,18 +776,18 @@ class _MetricCardData {
   final IconData icon;
 
   const _MetricCardData({
-    required this.title,
-    required this.rka,
-    required this.realisasi,
-    required this.percentage,
-    required this.gradient,
-    required this.icon,
+  required this.title,
+  required this.rka,
+  required this.realisasi,
+  required this.percentage,
+  required this.gradient,
+  required this.icon,
   });
-}
+  }
 
-class _CompanyMetrics {
+  class _CompanyMetrics {
   final String name;
   final List<_MetricCardData> metrics;
 
   const _CompanyMetrics({required this.name, required this.metrics});
-}
+  }

@@ -220,7 +220,9 @@ class _HomeGrid extends StatelessWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const BisnisApDashboardPage(),
+                                    builder: (_) => BisnisApDashboardPage(
+                                      userName: "$firstName $lastName".trim(),
+                                    ),
                                   ),
                                 );
                           } else if (app["title"] == "Mansis") {
