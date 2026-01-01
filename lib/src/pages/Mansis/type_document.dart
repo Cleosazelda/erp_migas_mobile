@@ -1,9 +1,17 @@
 import 'package:erp/services/mansis_api_service.dart';
 import 'package:erp/src/models/mansis_model.dart';
+import 'package:erp/src/pages/Mansis/list_pic.dart';
+import 'package:erp/src/pages/Mansis/widgets/mansis_drawer.dart';
 import 'package:flutter/material.dart';
 
 class TypeDocumentPage extends StatefulWidget {
-  const TypeDocumentPage({super.key});
+  final String userName;
+  final bool isAdmin;
+  const TypeDocumentPage({
+    super.key,
+    this.userName = 'Nama',
+    this.isAdmin = false,
+  });
 
   @override
   State<TypeDocumentPage> createState() => _TypeDocumentPageState();
@@ -136,9 +144,11 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
         backgroundColor: surfaceColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
+        leading: Builder(
+          builder: (context) => IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Icon(Icons.menu, color: colorScheme.onSurface),
+          ),
         ),
         titleSpacing: 0,
         title: Row(
@@ -174,6 +184,28 @@ class _TypeDocumentPageState extends State<TypeDocumentPage> {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+      drawer: MansisDrawer(
+        userName: widget.userName,
+        isAdmin: widget.isAdmin,
+        selectedPage: MansisDrawerPage.typeDocument,
+        onNavigateHome: () {
+          Navigator.pop(context);
+          Navigator.pop(context);
+        },
+        onNavigateDocuments: () => Navigator.pop(context),
+        onNavigatePic: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ListPicPage(
+                userName: widget.userName,
+                isAdmin: widget.isAdmin,
+              ),
+            ),
+          );
+        },
+        onNavigateTypeDocument: () {},
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

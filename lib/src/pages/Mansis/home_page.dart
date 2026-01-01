@@ -3,6 +3,7 @@ import 'package:erp/src/models/mansis_model.dart';
 import 'package:erp/src/pages/Mansis/form_mansis.dart';
 import 'package:erp/src/pages/Mansis/list_pic.dart';
 import 'package:erp/src/pages/Mansis/type_document.dart';
+import 'package:erp/src/pages/Mansis/widgets/mansis_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -98,17 +99,19 @@ class _MansisHomePageState extends State<MansisHomePage> {
         _documentTypes = [_allDocumentTypeOption(), ...types];
         _picOptions = [_allPicOption(), ...pics];
 
-        _selectedType = _selectedType.id == -1
-            ? _documentTypes.first
-            : _selectedType;
+        _selectedType = _documentTypes.firstWhere(
+              (e) => e.id == _selectedType.id,
+          orElse: () => _documentTypes.first,
+        );
 
-        _selectedPic = _selectedPic.id == -1
-            ? _picOptions.first
-            : _selectedPic;
-
+        _selectedPic = _picOptions.firstWhere(
+              (e) => e.id == _selectedPic.id,
+          orElse: () => _picOptions.first,
+        );
 
         _isLoading = false;
       });
+
 
     } catch (e) {
       if (mounted) {
@@ -429,7 +432,41 @@ class _MansisHomePageState extends State<MansisHomePage> {
           ],
         ),
       ),
-      drawer: _buildDrawer(context, surfaceColor: surfaceColor, isDark: isDark),
+      drawer: MansisDrawer(
+        userName: widget.userName,
+        isAdmin: widget.isAdmin,
+        selectedPage: MansisDrawerPage.documents,
+        onNavigateHome: () => Navigator.pop(context),
+        onNavigateDocuments: () {},
+        onNavigatePic: widget.isAdmin
+            ? () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ListPicPage(
+                userName: widget.userName,
+                isAdmin: widget.isAdmin,
+              ),
+            ),
+          );
+          if (mounted) _loadData();
+        }
+            : null,
+        onNavigateTypeDocument: widget.isAdmin
+            ? () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TypeDocumentPage(
+                userName: widget.userName,
+                isAdmin: widget.isAdmin,
+              ),
+            ),
+          );
+          if (mounted) _loadData();
+        }
+            : null,
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           key: _refreshIndicatorKey,
@@ -477,212 +514,6 @@ class _MansisHomePageState extends State<MansisHomePage> {
     );
   }
 
-
-    Drawer _buildDrawer(BuildContext context,
-        {required Color surfaceColor, required bool isDark}) {
-      final theme = Theme.of(context);
-      final colorScheme = theme.colorScheme;
-      return Drawer(
-        child: Container(
-          color: surfaceColor,
-          child: Column(
-            children: [
-              _buildDrawerHeader(theme,
-                  surfaceColor: surfaceColor, isDark: isDark),
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildSectionTitle('Navigasi', theme),
-                    _buildSidebarItem(
-                      context,
-                      assetPath: 'assets/images/home.png',
-                      title: 'Beranda',
-                      isSelected: false,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                      },
-                    ),
-                    _buildSidebarItem(
-                      context,
-                      assetPath: 'assets/images/mansis/documents_logo.png',
-                      title: 'Dokumen',
-                      isSelected: true,
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    if (widget.isAdmin) ...[
-                      const SizedBox(height: 12),
-                      _buildSectionTitle('Data Master', theme),
-                      _buildSidebarItem(
-                        context,
-                        assetPath: 'assets/images/mansis/pic_logo.png',
-                        title: 'Daftar PIC',
-                        isSelected: false,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ListPicPage(),
-                            ),
-                          );
-                          if (mounted) _loadData();
-                        },
-                      ),
-                      _buildSidebarItem(
-                        context,
-                        assetPath: 'assets/images/mansis/list_documents.png',
-                        title: 'Tipe Dokumen',
-                        isSelected: false,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TypeDocumentPage(),
-                            ),
-                          );
-                          if (mounted) _loadData();
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-
-Widget _buildDrawerHeader(ThemeData theme,
-    {required Color surfaceColor, required bool isDark}) {
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          border: Border(
-            bottom: BorderSide(
-              color: isDark
-                  ? theme.colorScheme.surface
-                  : theme.colorScheme.surfaceVariant,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: theme.colorScheme.primary.withOpacity(isDark ? 0.18 : 0.12),
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.account_circle,
-                    size: 36,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.userName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manajemen Sistem MUJ',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.hintColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
-      child: Text(
-        title,
-        style: theme.textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: theme.hintColor,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSidebarItem(
-      BuildContext context, {
-        required String assetPath,
-        required String title,
-        required bool isSelected,
-        required VoidCallback onTap,
-      }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final color = isSelected ? theme.colorScheme.onSurface : theme.hintColor;
-    final bgColor = isSelected
-        ? theme.colorScheme.surfaceVariant.withOpacity(isDark ? 0.5 : 0.8)
-        : Colors.transparent;
-
-    return Material(
-      color: bgColor,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Image.asset(
-                assetPath,
-                width: 22,
-                height: 22,
-                color: color,
-                errorBuilder: (ctx, e, st) => Icon(Icons.image_not_supported, color: color, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              if (isSelected)
-                Icon(Icons.check_circle, size: 18, color: color),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSearchField() {
     final theme = Theme.of(context);

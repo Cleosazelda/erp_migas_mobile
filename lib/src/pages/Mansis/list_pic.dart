@@ -1,10 +1,18 @@
 import 'package:erp/services/mansis_api_service.dart';
 import 'package:erp/src/models/mansis_model.dart';
+import 'package:erp/src/pages/Mansis/type_document.dart';
+import 'package:erp/src/pages/Mansis/widgets/mansis_drawer.dart';
 import 'package:flutter/material.dart';
 
 
 class ListPicPage extends StatefulWidget {
-  const ListPicPage({super.key});
+  final String userName;
+  final bool isAdmin;
+  const ListPicPage({
+    super.key,
+    this.userName = 'Nama',
+    this.isAdmin = false,
+  });
 
   @override
   State<ListPicPage> createState() => _ListPicPageState();
@@ -138,9 +146,11 @@ class _ListPicPageState extends State<ListPicPage> {
         backgroundColor: surfaceColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
+        leading: Builder(
+          builder: (context) => IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Icon(Icons.menu, color: colorScheme.onSurface),
+          ),
         ),
         titleSpacing: 0,
         title: Row(
@@ -176,6 +186,28 @@ class _ListPicPageState extends State<ListPicPage> {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+      drawer: MansisDrawer(
+        userName: widget.userName,
+        isAdmin: widget.isAdmin,
+        selectedPage: MansisDrawerPage.pic,
+        onNavigateHome: () {
+          Navigator.pop(context);
+          Navigator.pop(context);
+        },
+        onNavigateDocuments: () => Navigator.pop(context),
+        onNavigatePic: () {},
+        onNavigateTypeDocument: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TypeDocumentPage(
+                userName: widget.userName,
+                isAdmin: widget.isAdmin,
+              ),
+            ),
+          );
+        },
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

@@ -340,10 +340,10 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
   List<Widget> _buildSidebarMenu(ThemeData theme, BuildContext context) {
     final sections = [
       _SidebarMenuSection(
-        title: 'Layanan Umum',
+        title: 'Dashboard',
         items: [
           _SidebarMenuItem(
-            title: 'Beranda',
+            title: 'Bisnis AP',
             icon: Icons.home_outlined,
             isSelected: false,
             onTap: () {
@@ -354,10 +354,10 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
         ],
       ),
       _SidebarMenuSection(
-        title: 'Bisnis AP',
+        title: 'MUJI',
         items: [
           _SidebarMenuItem(
-            title: 'Dashboard',
+            title: 'Bisnis',
             icon: Icons.dashboard_outlined,
             isSelected: true,
             onTap: () => Navigator.pop(context),
@@ -370,21 +370,31 @@ class _BisnisApDashboardPageState extends State<BisnisApDashboardPage> {
         ],
       ),
       _SidebarMenuSection(
-        title: 'Entitas',
+        title: 'ENM',
         items: [
           _SidebarMenuItem(
-            title: 'MUJI',
+            title: 'Bisnis',
             icon: Icons.apartment_outlined,
             onTap: () => _showComingSoon(context),
           ),
           _SidebarMenuItem(
-            title: 'ENM',
+            title: 'Monitoring',
             icon: Icons.factory_outlined,
             onTap: () => _showComingSoon(context),
           ),
+        ],
+      ),
+      _SidebarMenuSection(
+        title: 'MUJ ONWJ',
+        items: [
           _SidebarMenuItem(
-            title: 'MUJ ONWJ',
-            icon: Icons.water_damage_outlined,
+            title: 'Bisnis',
+            icon: Icons.apartment_outlined,
+            onTap: () => _showComingSoon(context),
+          ),
+          _SidebarMenuItem(
+            title: 'Monitoring',
+            icon: Icons.factory_outlined,
             onTap: () => _showComingSoon(context),
           ),
         ],
